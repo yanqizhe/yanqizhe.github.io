@@ -1,5 +1,24 @@
 [
   {
+    "slug": "post-mwpyx3sg",
+    "title": "郭逸文发射",
+    "subtitle": "火箭发射",
+    "category": "Original",
+    "date": "2026-11-21",
+    "minutes": 6,
+    "tags": [],
+    "cover": "Original",
+    "sections": [
+      {
+        "h": "正文",
+        "p": [
+          "郭逸文炸了"
+        ]
+      }
+    ],
+    "lastmod": "2026-11-21"
+  },
+  {
     "slug": "rebuild-static-blog",
     "title": "从 Hugo 到零运行时：一次静态博客的重构记录",
     "subtitle": "把模板、数据、交互三层拆开，用纯 HTML / CSS / JS 复刻一遍 Stack 主题的信息架构，顺便记录哪些东西其实可以不要。",
