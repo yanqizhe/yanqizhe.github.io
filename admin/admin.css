@@ -553,6 +553,62 @@ code {
   background: #b73748;
 }
 
+.upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 12px 0 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--card-separator-color);
+  border-radius: 8px;
+  background: var(--body-background);
+}
+.upload-bar .upload-label {
+  color: var(--card-text-color-tertiary);
+  font-size: 1.2rem;
+  margin-right: 2px;
+}
+.upload-bar .btn-mini { background: var(--card-background); }
+.upload-bar .muted { margin-left: auto; }
+
+.site-settings-card input[type="file"] { display: none; }
+.avatar-setting-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0 12px;
+}
+.avatar-setting-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: linear-gradient(135deg, #34495e, #6c8ba5);
+  box-shadow: var(--shadow-l1);
+  flex: 0 0 auto;
+}
+.avatar-setting-preview[hidden] { display: none; }
+.avatar-setting-fallback {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #34495e, #6c8ba5);
+  color: #fff;
+  font-size: 2.2rem;
+  font-weight: 500;
+  flex: 0 0 auto;
+}
+.avatar-setting-fallback[hidden] { display: none; }
+.site-state {
+  margin-top: 10px;
+  font-size: 1.15rem;
+  color: var(--card-text-color-tertiary);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 900px) {
   .admin-shell { padding: 18px 14px 0; }
   .admin-grid { grid-template-columns: 1fr; }

@@ -108,6 +108,20 @@
     $('#siteName') && ($('#siteName').textContent = SITE.name);
     $('#siteDescription') && ($('#siteDescription').textContent = SITE.description);
     $('#siteEmoji') && ($('#siteEmoji').textContent = SITE.emoji);
+    var avatar = $('#siteAvatar');
+    if (avatar) {
+      var fallback = avatar.parentNode.querySelector('.avatar-fallback');
+      if (SITE.avatar) {
+        avatar.src = SITE.avatar;
+        avatar.alt = SITE.name + ' 头像';
+        avatar.hidden = false;
+        if (fallback) fallback.hidden = true;
+      } else {
+        avatar.hidden = true;
+        avatar.removeAttribute('src');
+        if (fallback) fallback.hidden = false;
+      }
+    }
     $('#siteNotice') && ($('#siteNotice').textContent = SITE.notice);
     $('#footerDisclaimer') && ($('#footerDisclaimer').textContent = SITE.disclaimer);
     $('#footerCopyright') && ($('#footerCopyright').textContent = '© ' + SITE.since + ' ' + SITE.name + ' · Sample');
@@ -920,6 +934,16 @@
       .catch(finish);
   }
 
+  /* 网页后台「站点设置」：头像 / 站点名 / 描述 */
+  function loadRemoteSettings(done) {
+    function finish() { done(); }
+    if (location.protocol === 'file:' || !D.setSite || typeof fetch !== 'function') { finish(); return; }
+    fetch('content/settings.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cfg) { if (cfg && typeof cfg === 'object') D.setSite(cfg); finish(); })
+      .catch(finish);
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
     renderChrome();
@@ -944,7 +968,7 @@
   }
   function start() {
     rebuildIndex();
-    loadRemotePosts(boot);
+    loadRemotePosts(function () { loadRemoteSettings(boot); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();

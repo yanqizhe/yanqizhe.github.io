@@ -66,6 +66,28 @@
           <div id="connectionState" class="connection-state" role="status">未连接</div>
         </section>
 
+        <section class="admin-card site-settings-card" aria-labelledby="siteSettingsTitle">
+          <h2 id="siteSettingsTitle">站点设置</h2>
+          <p class="muted small">这里改的是主站左上角头像、站点名和描述，保存后自动发布。</p>
+          <label class="field-label">站点名称 <input id="sName" class="input" type="text" placeholder="重构博客"></label>
+          <label class="field-label">站点描述 <textarea id="sDescription" class="input" rows="2" placeholder="一句话介绍你的站点"></textarea></label>
+          <div class="avatar-setting-row">
+            <span class="avatar-setting-fallback" id="sAvatarFallback">R</span>
+            <img id="sAvatarPreview" class="avatar-setting-preview" alt="站点头像预览" hidden>
+            <div>
+              <div class="muted small">左上角头像</div>
+              <div id="sAvatarPath" class="muted tiny">当前使用默认 R</div>
+            </div>
+          </div>
+          <input id="avatarInput" type="file" accept="image/*">
+          <div class="btn-row">
+            <button id="uploadAvatarBtn" class="btn btn-mini" type="button">上传头像</button>
+            <button id="resetAvatarBtn" class="btn btn-mini" type="button" hidden>恢复默认 R</button>
+            <button id="saveSiteBtn" class="btn btn-primary" type="button">保存站点设置</button>
+          </div>
+          <div id="siteState" class="site-state" role="status">尚未加载站点设置</div>
+        </section>
+
         <section class="admin-card guide-card" aria-labelledby="guideTitle">
           <h2 id="guideTitle">首次使用</h2>
           <ol class="guide-list">
@@ -120,6 +142,17 @@
             <label class="field-label full">封面关键词 <input id="fCover" class="input" type="text" placeholder="例如：SSG / REBUILD、METRICS、GIT"></label>
           </div>
 
+          <div class="upload-bar" aria-label="插入媒体">
+            <span class="upload-label">插入：</span>
+            <button id="insertImageBtn" class="btn btn-mini" type="button">图片</button>
+            <button id="insertVideoBtn" class="btn btn-mini" type="button">视频</button>
+            <button id="insertFileBtn" class="btn btn-mini" type="button">附件</button>
+            <input id="insertImage" type="file" accept="image/*">
+            <input id="insertVideo" type="file" accept="video/*">
+            <input id="insertFile" type="file">
+            <span class="muted tiny">文件存到仓库 assets/uploads/，最大 30 MB</span>
+          </div>
+
           <div class="editor-tabs" role="tablist" aria-label="编辑模式">
             <button class="tab active" type="button" data-tab="form" role="tab" aria-selected="true">正文</button>
             <button class="tab" type="button" data-tab="preview" role="tab" aria-selected="false">预览</button>
@@ -131,7 +164,8 @@
               <textarea id="fBody" class="input body-input" spellcheck="false" placeholder="## 小标题&#10;&#10;正文段落，支持 **加粗**、`行内代码`、[链接](https://example.com)。&#10;&#10;- 列表项&#10;- [x] 已完成任务&#10;&#10;> 引用&#10;&#10;```&#10;代码&#10;```&#10;&#10;| 列 A | 列 B |&#10;| --- | --- |&#10;| 内容 | 内容 |&#10;&#10;::: 提示 | 自定义提示框"></textarea>
               <div class="syntax-help">
                 <strong>写作语法</strong>
-                <code>## 标题</code> 分节 · <code>- 项目</code> 列表 · <code>&gt; 引用</code> · <code>```</code> 代码块 · <code>| 表格 |</code> · <code>::: 提示 | 内容</code>
+                <code>## 标题</code> 分节 · <code>- 项目</code> 列表 · <code>&gt; 引用</code> · <code>```</code> 代码块 · <code>| 表格 |</code> · <code>::: 提示 | 内容</code><br>
+                媒体：<code>![说明](图片地址)</code> · <code>@video[说明](视频地址)</code> · <code>[下载文件](文件地址)</code>（也可用上方按钮自动插入）
               </div>
             </div>
             <div id="panePreview" class="editor-pane" hidden>

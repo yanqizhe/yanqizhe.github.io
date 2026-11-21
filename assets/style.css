@@ -187,6 +187,41 @@ h1, h2, h3, h4 { color: var(--card-text-color-main); line-height: 1.35; }
   border-radius: 50%;
   box-shadow: var(--shadow-l1);
 }
+.site-avatar .site-logo { position: relative; z-index: 1; }
+.site-avatar [hidden] { display: none !important; }
+
+/* 正文内嵌图片 / 视频 / 下载附件 */
+.article-content .inline-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 18px auto;
+  border-radius: 8px;
+  box-shadow: var(--shadow-l1);
+}
+.article-content .inline-video {
+  display: block;
+  margin: 18px 0;
+}
+.article-content .inline-video video {
+  display: block;
+  width: 100%;
+  max-width: 760px;
+  max-height: 60vh;
+  border-radius: 8px;
+  background: #000;
+}
+.article-content .inline-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px solid var(--card-separator-color);
+  border-radius: 999px;
+  font-size: .9em;
+}
+.article-content a[download]::after { content: " ↓"; }
 .sidebar-head .site-meta { margin-top: 16px; }
 .site-meta .site-name { font-size: 2.2rem; margin: 0 0 6px; font-weight: 700; letter-spacing: -.3px; }
 .site-meta .site-name a { color: var(--card-text-color-main); }

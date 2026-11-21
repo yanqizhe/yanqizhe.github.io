@@ -11,6 +11,7 @@
     suffix: 'Sample',
     description: '静态站爱好者 · 写点技术与工程笔记',
     emoji: '🧪',
+    avatar: '',
     since: 2026,
     notice: '演示样品：布局与信息架构参照 hugo-theme-stack，内容与身份均为占位，非任何真实站点的副本。',
     license: '除非另有说明，此内容使用 CC BY-SA 4.0 许可。',
@@ -321,9 +322,28 @@
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
+  function safeInlineUrl(u) {
+    return /^(https?:\/\/|mailto:|#|\/|\.\/|\.\.\/|data:image\/)/i.test(String(u || '')) ? u : '#';
+  }
+  function isDownloadUrl(u) {
+    return /\.(pdf|zip|rar|7z|tar|gz|mp4|webm|mov|m4v|txt|md|docx?|xlsx?|pptx?|csv|json|apk|exe|dmg)$/i.test(String(u || ''));
+  }
   function inline(s) {
     return esc(s)
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
+      .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+        return '<img class="inline-img" src="' + safeInlineUrl(url) + '" alt="' + alt + '" loading="lazy">';
+      })
+      .replace(/@video\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        var u = safeInlineUrl(url);
+        return '<span class="inline-video"><video controls preload="metadata" src="' + u +
+          '">您的浏览器不支持视频播放。</video><a class="inline-download" href="' + u +
+          '" download>下载' + (label || '视频') + '</a></span>';
+      })
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, text, url) {
+        var u = safeInlineUrl(url);
+        return '<a href="' + u + '"' + (isDownloadUrl(u) ? ' download' : '') +
+          (u === '#' ? '' : ' target="_blank" rel="noopener"') + '>' + text + '</a>';
+      })
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/~~([^~]+)~~/g, '<del>$1</del>')
@@ -565,10 +585,19 @@
   }
   POSTS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
 
+  /* 网页后台「站点设置」保存后，主站用远程配置覆盖占位站点信息 */
+  function setSite(patch) {
+    if (!patch || typeof patch !== 'object') return SITE;
+    ['name', 'description', 'notice', 'avatar'].forEach(function (key) {
+      if (typeof patch[key] === 'string') SITE[key] = patch[key];
+    });
+    return SITE;
+  }
+
   global.BLOG_DATA = {
     SITE: SITE, MENU: MENU, SOCIAL: SOCIAL, CATEGORIES: CATEGORIES,
     STACK: STACK, FRIENDS: FRIENDS, POSTS: POSTS,
-    setPosts: setPosts,
+    setPosts: setPosts, setSite: setSite,
     pagefindPlaceholder: 'Pagefind 在正式站由构建期生成索引；本样品使用运行时倒排索引。'
   };
 })(window);

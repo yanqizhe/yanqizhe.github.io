@@ -11,6 +11,8 @@
   var TOKEN_KEY = 'blogAdminToken';
   var CFG_KEY = 'blogAdminCfg';
   var THEME_KEY = 'StackColorScheme';
+  var SETTINGS_PATH = 'content/settings.json';
+  var UPLOAD_DIR = 'assets/uploads';
   var DEFAULT_CFG = {
     owner: 'yanqizhe',
     repo: 'yanqizhe.github.io',
@@ -22,7 +24,9 @@
     token: '',
     cfg: DEFAULT_CFG,
     posts: [],
+    settings: null,
     sha: null,
+    shaMap: {},
     index: -1,
     originalSlug: '',
     editorMode: 'form',
@@ -139,8 +143,8 @@
   }
 
   /* ---------------- GitHub API ---------------- */
-  function contentsUrl() {
-    var p = state.cfg.path.split('/').map(encodeURIComponent).join('/');
+  function contentsUrl(path) {
+    var p = String(path || state.cfg.path).split('/').map(encodeURIComponent).join('/');
     return 'https://api.github.com/repos/' +
       encodeURIComponent(state.cfg.owner) + '/' +
       encodeURIComponent(state.cfg.repo) + '/contents/' + p;
@@ -201,28 +205,37 @@
     return utf8ToBase64(JSON.stringify(posts, null, 2) + '\n');
   }
 
+  function readJson(path, label) {
+    return gh(contentsUrl(path) + '?ref=' + encodeURIComponent(state.cfg.branch))
+      .then(function (data) {
+        if (Array.isArray(data)) throw new Error(label + ' 的路径是目录，请填写文件');
+        if (!data || !data.content) throw new Error(label + ' 内容为空或无法读取');
+        var json;
+        try { json = JSON.parse(base64ToUtf8(data.content)); }
+        catch (e) { throw new Error(label + ' 不是合法 JSON'); }
+        return { data: json, sha: data.sha };
+      });
+  }
+
   function fetchPosts(notify) {
     if (!state.token) { toast('请先连接 GitHub', 'bad'); return Promise.reject(new Error('no token')); }
-    return gh(contentsUrl() + '?ref=' + encodeURIComponent(state.cfg.branch))
-      .then(function (data) {
-        if (Array.isArray(data)) throw new Error('配置的文章路径是目录，请填写 posts.json 文件');
-        if (!data || !data.content) throw new Error('文件内容为空或无法读取');
-        var list;
-        try { list = JSON.parse(base64ToUtf8(data.content)); }
-        catch (e) { throw new Error('posts.json 不是合法 JSON'); }
-        if (!Array.isArray(list)) throw new Error('posts.json 顶层必须是数组');
-        state.posts = list;
-        state.sha = data.sha;
+    return readJson(state.cfg.path, 'posts.json')
+      .then(function (res) {
+        if (!Array.isArray(res.data)) throw new Error('posts.json 顶层必须是数组');
+        state.posts = res.data;
+        state.sha = res.sha;
+        state.shaMap[state.cfg.path] = res.sha;
         state.connected = true;
         setConn('已连接：' + state.cfg.owner + '/' + state.cfg.repo, 'ok');
         renderList();
-        if (notify) toast('已拉取 ' + list.length + ' 篇文章', 'ok');
-        return list;
+        if (notify) toast('已拉取 ' + res.data.length + ' 篇文章', 'ok');
+        return res.data;
       })
       .catch(function (err) {
         if (err.status === 404) {
           state.posts = [];
           state.sha = null;
+          state.shaMap[state.cfg.path] = null;
           state.connected = true;
           setConn('已连接，但仓库还没有 ' + state.cfg.path, 'ok');
           renderList();
@@ -233,6 +246,57 @@
         setConn('连接失败：' + err.message, 'bad');
         toast('拉取失败：' + err.message, 'bad');
         throw err;
+      });
+  }
+
+  function defaultSettings() {
+    return { name: '重构博客', description: '静态站爱好者 · 写点技术与工程笔记', notice: '', avatar: '' };
+  }
+
+  function fillSettingsForm() {
+    var s = state.settings || defaultSettings();
+    $('#sName').value = s.name || '';
+    $('#sDescription').value = s.description || '';
+    var av = $('#sAvatarPreview');
+    var fb = $('#sAvatarFallback');
+    if (s.avatar) {
+      av.src = s.avatar;
+      av.hidden = false;
+      fb.hidden = true;
+      $('#sAvatarPath').textContent = s.avatar;
+      $('#resetAvatarBtn').hidden = false;
+    } else {
+      av.hidden = true;
+      av.removeAttribute('src');
+      fb.hidden = false;
+      $('#sAvatarPath').textContent = '当前使用默认 R';
+      $('#resetAvatarBtn').hidden = true;
+    }
+    $('#siteState').textContent = state.settings ? '站点设置已加载' : '尚未加载站点设置';
+  }
+
+  function fetchSettings(notify) {
+    if (!state.token) return Promise.resolve(null);
+    return readJson(SETTINGS_PATH, 'settings.json')
+      .then(function (res) {
+        if (!res.data || typeof res.data !== 'object' || Array.isArray(res.data)) {
+          throw new Error('settings.json 顶层必须是对象');
+        }
+        state.settings = Object.assign(defaultSettings(), res.data);
+        state.shaMap[SETTINGS_PATH] = res.sha;
+        fillSettingsForm();
+        if (notify) toast('已读取站点设置', 'ok');
+        return state.settings;
+      })
+      .catch(function (err) {
+        if (err.status === 404) {
+          state.settings = defaultSettings();
+          state.shaMap[SETTINGS_PATH] = null;
+          fillSettingsForm();
+          return state.settings;
+        }
+        toast('读取站点设置失败：' + err.message, 'bad');
+        return null;
       });
   }
 
@@ -248,6 +312,7 @@
         setConn('已验证身份：' + user.login + '，正在读取文章…', 'ok');
         return fetchPosts(false);
       })
+      .then(function () { return fetchSettings(false); })
       .catch(function (err) {
         state.connected = false;
         if (err.status === 401 || err.status === 403) {
@@ -261,34 +326,52 @@
       .then(function () { setBusy($('#connectBtn'), false); });
   }
 
-  function putPosts(posts, message, retried) {
-    var body = {
-      message: message,
-      content: encodePosts(posts),
-      branch: state.cfg.branch
-    };
-    if (state.sha) body.sha = state.sha;
-    return gh(contentsUrl(), {
-      method: 'PUT',
-      body: JSON.stringify(body)
-    }).catch(function (err) {
-      if (err.status === 409 && !retried) {
-        return fetchPosts(false).then(function () {
-          return putPosts(posts, message, true);
+  function putFile(path, content, message) {
+    var body = { message: message, content: content, branch: state.cfg.branch };
+    var sha = state.shaMap[path];
+    if (sha) body.sha = sha;
+    return gh(contentsUrl(path), { method: 'PUT', body: JSON.stringify(body) })
+      .catch(function (err) {
+        if (err.status !== 409) throw err;
+        return readJson(path, path).then(function (res) {
+          state.shaMap[path] = res.sha;
+          body.sha = res.sha;
+          return gh(contentsUrl(path), { method: 'PUT', body: JSON.stringify(body) });
         });
-      }
-      throw err;
-    }).then(function (resp) {
-      if (resp && resp.content && resp.content.sha) state.sha = resp.content.sha;
-      return resp;
-    });
+      })
+      .then(function (resp) {
+        if (resp && resp.content && resp.content.sha) state.shaMap[path] = resp.content.sha;
+        if (path === state.cfg.path) state.sha = state.shaMap[path];
+        return resp;
+      });
+  }
+
+  function putPosts(posts, message) {
+    return putFile(state.cfg.path, encodePosts(posts), message);
   }
 
   /* ---------------- Markdown 风格正文 ↔ sections ---------------- */
+  function safeInlineUrl(u) {
+    return /^(https?:\/\/|mailto:|#|\/|\.\/|\.\.\/|data:image\/)/i.test(String(u || '')) ? u : '#';
+  }
+  function isDownloadUrl(u) {
+    return /\.(pdf|zip|rar|7z|tar|gz|mp4|webm|mov|m4v|txt|md|docx?|xlsx?|pptx?|csv|json|apk|exe|dmg)$/i.test(String(u || ''));
+  }
   function inlineHtml(s) {
     return esc(s)
+      .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
+        return '<img class="inline-img" src="' + safeInlineUrl(url) + '" alt="' + alt + '" loading="lazy">';
+      })
+      .replace(/@video\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, label, url) {
+        var u = safeInlineUrl(url);
+        return '<span class="inline-video"><video controls preload="metadata" src="' + u +
+          '">您的浏览器不支持视频播放。</video><a class="inline-download" href="' + u +
+          '" download>下载' + (label || '视频') + '</a></span>';
+      })
       .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, function (m, text, url) {
-        return '<a href="' + esc(safeUrl(url)) + '" target="_blank" rel="noopener">' + text + '</a>';
+        var u = safeInlineUrl(url);
+        return '<a href="' + u + '"' + (isDownloadUrl(u) ? ' download' : '') +
+          (u === '#' ? '' : ' target="_blank" rel="noopener"') + '>' + text + '</a>';
       })
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -650,7 +733,7 @@
       ((state.index >= 0 ? 'admin: update ' : 'admin: add ') + post.slug);
 
     setBusy($('#saveBtn'), true, '正在提交…');
-    putPosts(next, msg, false)
+    putPosts(next, msg)
       .then(function () {
         state.posts = next;
         state.dirty = false;
@@ -672,7 +755,7 @@
 
     var next = state.posts.filter(function (_, i) { return i !== index; });
     setBusy($('#deleteBtn'), true, '正在删除…');
-    putPosts(next, 'admin: delete ' + p.slug, false)
+    putPosts(next, 'admin: delete ' + p.slug)
       .then(function () {
         state.posts = next;
         if (state.index === index) $('#editor').hidden = true;
@@ -683,6 +766,136 @@
       })
       .catch(function (err) { toast('删除失败：' + err.message, 'bad'); })
       .then(function () { setBusy($('#deleteBtn'), false); });
+  }
+
+  /* ---------------- 文件上传（图片 / 视频 / 附件 / 头像）---------------- */
+  function fileToBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        var s = String(reader.result || '');
+        resolve(s.indexOf(',') !== -1 ? s.slice(s.indexOf(',') + 1) : '');
+      };
+      reader.onerror = function () { reject(new Error('读取文件失败')); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function safeAssetName(name) {
+    var n = String(name || 'file').replace(/\\/g, '/').split('/').pop();
+    n = n.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    return (n || 'file').slice(-80).toLowerCase();
+  }
+
+  function uploadAsset(file, kind) {
+    if (!state.token || !state.connected) {
+      toast('请先连接 GitHub', 'bad');
+      return Promise.reject(new Error('未连接'));
+    }
+    if (!file) return Promise.reject(new Error('没有选择文件'));
+    var limit = kind === 'image' ? 8 * 1024 * 1024 : 30 * 1024 * 1024;
+    if (file.size > limit) {
+      toast(kind === 'image' ? '图片不能超过 8 MB' : '视频 / 附件不能超过 30 MB', 'bad');
+      return Promise.reject(new Error('文件过大'));
+    }
+    var d = new Date();
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var path = UPLOAD_DIR + '/' + yyyy + '/' + mm + '/' +
+      Date.now().toString(36) + '-' + safeAssetName(file.name);
+    return fileToBase64(file)
+      .then(function (b64) { return putFile(path, b64, 'admin: upload ' + path); })
+      .then(function () { return '/' + path; });
+  }
+
+  function insertAtCursor(text) {
+    var el = $('#fBody');
+    var start = el.selectionStart == null ? el.value.length : el.selectionStart;
+    var end = el.selectionEnd == null ? el.value.length : el.selectionEnd;
+    var before = el.value.slice(0, start);
+    var after = el.value.slice(end);
+    var sep = before && !/\n$/.test(before) ? '\n\n' : '';
+    el.value = before + sep + text + after;
+    var pos = (before + sep + text).length;
+    el.focus();
+    try { el.setSelectionRange(pos, pos); } catch (e) {}
+    state.dirty = true;
+  }
+
+  function handleMediaUpload(kind, inputId) {
+    if ($('#editor').hidden) { toast('请先新建或打开一篇文章', 'bad'); return; }
+    if (state.editorMode !== 'form') { toast('请先切到「正文」模式再插入媒体', 'bad'); return; }
+    var input = $(inputId);
+    input.value = '';
+    input.onchange = function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var activeBtn = kind === 'image' ? $('#insertImageBtn') :
+        (kind === 'video' ? $('#insertVideoBtn') : $('#insertFileBtn'));
+      setBusy(activeBtn, true, '上传中…');
+      var label = file.name.replace(/\.[^.]+$/, '');
+      uploadAsset(file, kind)
+        .then(function (url) {
+          var snippet;
+          if (kind === 'image') snippet = '![' + label + '](' + url + ')';
+          else if (kind === 'video') snippet = '@video[' + label + '](' + url + ')\n\n[下载视频](' + url + ')';
+          else snippet = '[下载 ' + file.name + '](' + url + ')';
+          insertAtCursor(snippet);
+          toast('已上传并插入正文，记得点「保存到 GitHub」', 'ok');
+        })
+        .catch(function (err) { toast('上传失败：' + err.message, 'bad'); })
+        .then(function () { setBusy(activeBtn, false); });
+    };
+    input.click();
+  }
+
+  function saveSiteSettings() {
+    if (!state.token || !state.connected) { toast('请先连接 GitHub', 'bad'); return; }
+    var cfg = {
+      name: $('#sName').value.trim() || '重构博客',
+      description: $('#sDescription').value.trim(),
+      notice: state.settings && state.settings.notice ? state.settings.notice : '',
+      avatar: state.settings && state.settings.avatar ? state.settings.avatar : ''
+    };
+    setBusy($('#saveSiteBtn'), true, '保存中…');
+    putFile(SETTINGS_PATH, utf8ToBase64(JSON.stringify(cfg, null, 2) + '\n'), 'admin: update site settings')
+      .then(function () {
+        state.settings = cfg;
+        fillSettingsForm();
+        $('#siteState').textContent = '已保存，稍等片刻主站生效';
+        toast('站点设置已保存', 'ok');
+      })
+      .catch(function (err) { toast('保存失败：' + err.message, 'bad'); })
+      .then(function () { setBusy($('#saveSiteBtn'), false); });
+  }
+
+  function handleAvatarUpload() {
+    if (!state.token || !state.connected) { toast('请先连接 GitHub', 'bad'); return; }
+    var input = $('#avatarInput');
+    input.value = '';
+    input.onchange = function () {
+      var file = input.files && input.files[0];
+      if (!file) return;
+      setBusy($('#uploadAvatarBtn'), true, '上传中…');
+      uploadAsset(file, 'image')
+        .then(function (url) {
+          state.settings = state.settings || defaultSettings();
+          state.settings.avatar = url;
+          fillSettingsForm();
+          $('#siteState').textContent = '头像已上传，请点击「保存站点设置」发布';
+          toast('头像已上传，点击「保存站点设置」后生效', 'ok');
+        })
+        .catch(function (err) { toast('上传失败：' + err.message, 'bad'); })
+        .then(function () { setBusy($('#uploadAvatarBtn'), false); });
+    };
+    input.click();
+  }
+
+  function resetAvatar() {
+    state.settings = state.settings || defaultSettings();
+    state.settings.avatar = '';
+    fillSettingsForm();
+    $('#siteState').textContent = '已恢复默认 R，请点击「保存站点设置」发布';
   }
 
   /* ---------------- 事件绑定 ---------------- */
@@ -718,6 +931,14 @@
         toast('仓库设置已保存到本机', 'ok');
       });
     });
+
+    $('#uploadAvatarBtn').addEventListener('click', handleAvatarUpload);
+    $('#resetAvatarBtn').addEventListener('click', resetAvatar);
+    $('#saveSiteBtn').addEventListener('click', saveSiteSettings);
+
+    $('#insertImageBtn').addEventListener('click', function () { handleMediaUpload('image', '#insertImage'); });
+    $('#insertVideoBtn').addEventListener('click', function () { handleMediaUpload('video', '#insertVideo'); });
+    $('#insertFileBtn').addEventListener('click', function () { handleMediaUpload('file', '#insertFile'); });
 
     $('#refreshBtn').addEventListener('click', function () {
       if (!state.token) { toast('请先连接 GitHub', 'bad'); return; }
@@ -771,6 +992,7 @@
     state.cfg = loadCfg();
     fillCfg();
     bind();
+    fillSettingsForm();
 
     try { state.token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
     if (state.token) {
