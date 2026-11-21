@@ -428,16 +428,25 @@
     return connectWithToken(token);
   }
 
+  /* 只读文件 sha，不解析内容：图片等二进制文件不能当 JSON 解析 */
+  function readFileSha(path) {
+    return gh(contentsUrl(path) + '?ref=' + encodeURIComponent(state.cfg.branch))
+      .then(function (data) {
+        if (Array.isArray(data) || !data || !data.sha) throw new Error('无法读取文件 sha');
+        return data.sha;
+      });
+  }
+
   function putFile(path, content, message) {
     var body = { message: message, content: content, branch: state.cfg.branch };
     var sha = state.shaMap[path];
     if (sha) body.sha = sha;
     return gh(contentsUrl(path), { method: 'PUT', body: JSON.stringify(body) })
       .catch(function (err) {
-        if (err.status !== 409) throw err;
-        return readJson(path, path).then(function (res) {
-          state.shaMap[path] = res.sha;
-          body.sha = res.sha;
+        if (err.status !== 409 && err.status !== 422) throw err;
+        return readFileSha(path).then(function (fileSha) {
+          state.shaMap[path] = fileSha;
+          body.sha = fileSha;
           return gh(contentsUrl(path), { method: 'PUT', body: JSON.stringify(body) });
         });
       })
@@ -889,6 +898,18 @@
     return (n || 'file').slice(-80).toLowerCase();
   }
 
+  function isImageFile(file) {
+    var t = String((file && file.type) || '').toLowerCase();
+    var n = String((file && file.name) || '').toLowerCase();
+    return t.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp|svg|avif|ico)$/.test(n);
+  }
+
+  function isVideoFile(file) {
+    var t = String((file && file.type) || '').toLowerCase();
+    var n = String((file && file.name) || '').toLowerCase();
+    return t.indexOf('video/') === 0 || /\.(mp4|webm|mov|m4v|ogv|mkv)$/.test(n);
+  }
+
   function uploadAsset(file, kind) {
     if (!state.token || !state.connected) {
       toast('请先连接 GitHub', 'bad');
@@ -939,9 +960,17 @@
       uploadAsset(file, kind)
         .then(function (url) {
           var snippet;
-          if (kind === 'image') snippet = '![' + label + '](' + url + ')';
-          else if (kind === 'video') snippet = '@video[' + label + '](' + url + ')\n\n[下载视频](' + url + ')';
-          else snippet = '[下载 ' + file.name + '](' + url + ')';
+          var imageFile = kind === 'image' || isImageFile(file);
+          var videoFile = kind === 'video' || isVideoFile(file);
+          if (imageFile) {
+            /* 图片一律用 ![](...) 插入，主站才会真正显示出来 */
+            snippet = '![' + label + '](' + url + ')';
+            if (kind === 'file') snippet += '\n\n[下载原图](' + url + ')';
+          } else if (videoFile) {
+            snippet = '@video[' + label + '](' + url + ')\n\n[下载视频](' + url + ')';
+          } else {
+            snippet = '[下载 ' + file.name + '](' + url + ')';
+          }
           insertAtCursor(snippet);
           toast('已上传并插入正文，记得点「保存到 GitHub」', 'ok');
         })
