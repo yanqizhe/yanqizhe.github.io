@@ -1,6 +1,6 @@
 /* 样品站 Service Worker：仅在 http(s) 部署时由页面注册，file:// 预览不生效
    策略：本地资源 stale-while-revalidate；导航请求离线回退首页 */
-const CACHE = 'rb-sample-v4';
+const CACHE = 'rb-sample-v5';
 const CORE = [
   './', './index.html', './404.html',
   './assets/style.css', './assets/data.js', './assets/app.js', './assets/icon.svg',

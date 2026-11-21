@@ -921,39 +921,54 @@
     apply();
   }
 
+  /* ---------------- 远程数据指纹：内容变化时才刷新，避免无谓重绘 ---------------- */
+  function postKey(p) {
+    return [p.slug, p.title, p.subtitle, p.category, p.date, p.minutes,
+      (p.tags || []).join(','), p.cover, p.lastmod,
+      JSON.stringify(p.sections || [])].join('\u0001');
+  }
+  function postsKey(list) { return (list || []).map(postKey).join('\u0002'); }
+  function settingsKey(cfg) {
+    cfg = cfg || {};
+    return [cfg.name, cfg.description, cfg.notice, cfg.avatar].join('\u0001');
+  }
+
   /* ---------------- 远程文章（网页后台发布）----------------
-     http(s) 下异步读取 content/posts.json 覆盖内嵌样品；file:// 离线双击时跳过。 */
+     先用内嵌数据完成首屏；http(s) 下再异步读取 posts.json 增量更新。 */
   function loadRemotePosts(done) {
-    function finish() { done(); }
-    if (location.protocol === 'file:' || !D.setPosts || typeof fetch !== 'function') { finish(); return; }
+    function finish(changed) { done(!!changed); }
+    if (location.protocol === 'file:' || !D.setPosts || typeof fetch !== 'function') { finish(false); return; }
     fetch('content/posts.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (list) {
-        if (Array.isArray(list) && list.length) {
+        if (Array.isArray(list) && list.length && postsKey(list) !== postsKey(POSTS)) {
           D.setPosts(list);
           INDEX = Object.create(null); TERM_COUNT = 0;
           buildIndex();
-        }
-        finish();
+          finish(true);
+        } else finish(false);
       })
-      .catch(finish);
+      .catch(function () { finish(false); });
   }
 
   /* 网页后台「站点设置」：头像 / 站点名 / 描述 */
   function loadRemoteSettings(done) {
-    function finish() { done(); }
-    if (location.protocol === 'file:' || !D.setSite || typeof fetch !== 'function') { finish(); return; }
+    function finish(changed) { done(!!changed); }
+    if (location.protocol === 'file:' || !D.setSite || typeof fetch !== 'function') { finish(false); return; }
     fetch('content/settings.json', { cache: 'no-store' })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (cfg) { if (cfg && typeof cfg === 'object') D.setSite(cfg); finish(); })
-      .catch(finish);
+      .then(function (cfg) {
+        if (cfg && typeof cfg === 'object' &&
+            settingsKey(cfg) !== settingsKey({ name: SITE.name, description: SITE.description, notice: SITE.notice, avatar: SITE.avatar })) {
+          D.setSite(cfg);
+          finish(true);
+        } else finish(false);
+      })
+      .catch(function () { finish(false); });
   }
 
-  /* ---------------- boot ---------------- */
-  function boot() {
-    renderChrome();
-    renderWidgets();
-    bindSearchForm();
+  /* 只重绘页面主体，不重复绑定事件 */
+  function renderPage() {
     if (PAGE === 'home') renderHome();
     else if (PAGE === 'post') renderPost();
     else if (PAGE === 'archives') renderArchives();
@@ -963,6 +978,14 @@
     else if (PAGE === 'friends') renderFriends();
     else if (PAGE === 'debug') renderDebug();
     else if (PAGE === 'notfound') renderNotFound();
+  }
+
+  /* ---------------- boot ---------------- */
+  function boot() {
+    renderChrome();
+    renderWidgets();
+    bindSearchForm();
+    renderPage();
     enhanceArticle(document);
     bindLightbox();
     bindReadingProgress();
@@ -971,9 +994,22 @@
     bindShortcuts();
     bindToTop();
   }
+  function applyRemoteChanges(postsChanged, settingsChanged) {
+    if (settingsChanged) renderChrome();
+    if (postsChanged) {
+      renderPage();
+      renderWidgets();
+      if (PAGE === 'post') enhanceArticle(document);
+    }
+  }
   function start() {
     rebuildIndex();
-    loadRemotePosts(function () { loadRemoteSettings(boot); });
+    boot();
+    loadRemotePosts(function (postsChanged) {
+      loadRemoteSettings(function (settingsChanged) {
+        applyRemoteChanges(postsChanged, settingsChanged);
+      });
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
