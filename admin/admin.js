@@ -12,6 +12,8 @@
   var CFG_KEY = 'blogAdminCfg';
   var THEME_KEY = 'StackColorScheme';
   var SETTINGS_PATH = 'content/settings.json';
+  var AUTH_PATH = 'content/auth.json';
+  var KDF_ITERATIONS = 210000;
   var UPLOAD_DIR = 'assets/uploads';
   var DEFAULT_CFG = {
     owner: 'yanqizhe',
@@ -25,6 +27,7 @@
     cfg: DEFAULT_CFG,
     posts: [],
     settings: null,
+    auth: null,
     sha: null,
     shaMap: {},
     index: -1,
@@ -205,6 +208,69 @@
     return utf8ToBase64(JSON.stringify(posts, null, 2) + '\n');
   }
 
+  /* ---------------- 密码加密令牌（Web Crypto） ---------------- */
+  function bytesToB64(bytes) {
+    var bin = '';
+    for (var i = 0; i < bytes.length; i += 8192) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    return btoa(bin);
+  }
+  function b64ToBytes(b64) {
+    var bin = atob(String(b64 || '').replace(/\s/g, ''));
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function deriveKey(password, salt, iterations) {
+    var base = crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']
+    );
+    return base.then(function (key) {
+      return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+        key,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    });
+  }
+  function encryptToken(token, password) {
+    var salt = crypto.getRandomValues(new Uint8Array(16));
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return deriveKey(password, salt, KDF_ITERATIONS).then(function (key) {
+      return crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(token)
+      ).then(function (buf) {
+        return {
+          v: 1,
+          salt: bytesToB64(salt),
+          iv: bytesToB64(iv),
+          cipher: bytesToB64(new Uint8Array(buf)),
+          iterations: KDF_ITERATIONS,
+          updated: new Date().toISOString()
+        };
+      });
+    });
+  }
+  function decryptToken(payload, password) {
+    if (!payload || payload.v !== 1 || !payload.cipher) {
+      return Promise.reject(new Error('登录配置格式不正确'));
+    }
+    var salt = b64ToBytes(payload.salt);
+    var iv = b64ToBytes(payload.iv);
+    var data = b64ToBytes(payload.cipher);
+    return deriveKey(password, salt, payload.iterations || KDF_ITERATIONS).then(function (key) {
+      return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
+    }).then(function (buf) {
+      return new TextDecoder().decode(buf);
+    }).catch(function () {
+      throw new Error('密码错误');
+    });
+  }
+  function passwordValid(p) { return String(p || '').length >= 12; }
+
   function readJson(path, label) {
     return gh(contentsUrl(path) + '?ref=' + encodeURIComponent(state.cfg.branch))
       .then(function (data) {
@@ -215,6 +281,27 @@
         catch (e) { throw new Error(label + ' 不是合法 JSON'); }
         return { data: json, sha: data.sha };
       });
+  }
+
+  /* 公开仓库无需令牌即可读取登录配置 */
+  function fetchPublicJson(path) {
+    var p = String(path).split('/').map(encodeURIComponent).join('/');
+    var url = 'https://api.github.com/repos/' +
+      encodeURIComponent(state.cfg.owner) + '/' +
+      encodeURIComponent(state.cfg.repo) + '/contents/' + p +
+      '?ref=' + encodeURIComponent(state.cfg.branch);
+    return fetch(url, {
+      headers: { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+      cache: 'no-store'
+    }).then(function (r) {
+      if (r.status === 404) return null;
+      if (!r.ok) throw new Error('读取登录配置失败（' + r.status + '）');
+      return r.json();
+    }).then(function (data) {
+      if (!data || !data.content) return null;
+      try { return JSON.parse(base64ToUtf8(data.content)); }
+      catch (e) { throw new Error('登录配置不是合法 JSON'); }
+    });
   }
 
   function fetchPosts(notify) {
@@ -300,19 +387,27 @@
       });
   }
 
-  function connect() {
-    state.token = $('#tokenInput').value.trim();
-    if (!state.token) { toast('请先粘贴 GitHub 令牌', 'bad'); return; }
-    saveCfg();
+  function connectWithToken(token) {
+    state.token = String(token || '').trim();
+    if (!state.token) {
+      toast('请先输入 GitHub 令牌', 'bad');
+      return Promise.reject(new Error('no token'));
+    }
+    $('#tokenInput').value = state.token;
     try { localStorage.setItem(TOKEN_KEY, state.token); } catch (e) {}
     setBusy($('#connectBtn'), true, '正在连接…');
     setConn('正在验证令牌…', '');
-    gh('https://api.github.com/user')
+    return gh('https://api.github.com/user')
       .then(function (user) {
         setConn('已验证身份：' + user.login + '，正在读取文章…', 'ok');
         return fetchPosts(false);
       })
       .then(function () { return fetchSettings(false); })
+      .then(function () {
+        state.connected = true;
+        setConn('已连接：' + state.cfg.owner + '/' + state.cfg.repo, 'ok');
+        $('#changePwdBtn').hidden = false;
+      })
       .catch(function (err) {
         state.connected = false;
         if (err.status === 401 || err.status === 403) {
@@ -324,6 +419,13 @@
         }
       })
       .then(function () { setBusy($('#connectBtn'), false); });
+  }
+
+  function connect() {
+    var token = $('#tokenInput').value.trim();
+    if (!token) { toast('请先粘贴 GitHub 令牌', 'bad'); return Promise.reject(new Error('no token')); }
+    saveCfg();
+    return connectWithToken(token);
   }
 
   function putFile(path, content, message) {
@@ -906,6 +1008,118 @@
     saveSiteSettings({ auto: true });
   }
 
+  /* ---------------- 密码登录流程 ---------------- */
+  function initAuth() {
+    $('#authSetup').hidden = true;
+    $('#authLogin').hidden = true;
+    $('#changePwdBtn').hidden = true;
+    $('#changePwdBox').hidden = true;
+    if (!window.crypto || !crypto.subtle || !window.TextEncoder) {
+      setConn('当前环境不支持密码加密，请用 https 打开或走下方令牌方式', 'bad');
+      $('#authSetup').hidden = false;
+      return;
+    }
+    fetchPublicJson(AUTH_PATH).then(function (payload) {
+      state.auth = payload;
+      if (payload && payload.v === 1 && payload.cipher) {
+        $('#authLogin').hidden = false;
+        setConn('已启用密码登录 · 请输入后台密码', '');
+        if (state.token) {
+          connectWithToken(state.token).then(function () {
+            if (state.connected) {
+              $('#authLogin').hidden = true;
+              setConn('已自动登录（本机保存的令牌）', 'ok');
+            }
+          });
+        }
+      } else {
+        $('#authSetup').hidden = false;
+        if (state.token) $('#setupTokenInput').value = state.token;
+        setConn('首次设置：' + (state.token ? '本机已有令牌，设置密码即可' : '请输入令牌并设置密码'), '');
+      }
+    }).catch(function (err) {
+      setConn('读取登录配置失败：' + err.message + '，可用下方高级令牌方式', 'bad');
+      $('#authSetup').hidden = false;
+    });
+  }
+
+  function setupPassword() {
+    var token = $('#setupTokenInput').value.trim() || state.token;
+    var pwd = $('#setupPassword').value;
+    var pwd2 = $('#setupPassword2').value;
+    if (!token) { toast('请先粘贴 GitHub 令牌', 'bad'); return; }
+    if (!passwordValid(pwd)) { toast('密码至少 12 位，建议 14 位以上', 'bad'); return; }
+    if (pwd !== pwd2) { toast('两次输入的密码不一致', 'bad'); return; }
+    var oldToken = state.token;
+    state.token = token;
+    setBusy($('#setupBtn'), true, '设置中…');
+    gh('https://api.github.com/user')
+      .then(function () { return encryptToken(token, pwd); })
+      .then(function (payload) {
+        return putFile(AUTH_PATH, utf8ToBase64(JSON.stringify(payload, null, 2) + '\n'),
+          'admin: setup password login').then(function () { return payload; });
+      })
+      .then(function (payload) {
+        state.auth = payload;
+        $('#authSetup').hidden = true;
+        $('#authLogin').hidden = false;
+        $('#setupPassword').value = '';
+        $('#setupPassword2').value = '';
+        return connectWithToken(token);
+      })
+      .then(function () { toast('密码已设置，以后输密码即可登录', 'ok'); })
+      .catch(function (err) { state.token = oldToken; toast('设置失败：' + err.message, 'bad'); })
+      .then(function () { setBusy($('#setupBtn'), false); });
+  }
+
+  function loginWithPassword() {
+    var pwd = $('#loginPassword').value;
+    if (!pwd) { toast('请输入后台密码', 'bad'); return; }
+    setBusy($('#loginBtn'), true, '登录中…');
+    decryptToken(state.auth, pwd)
+      .then(function (token) {
+        $('#loginPassword').value = '';
+        return connectWithToken(token);
+      })
+      .then(function () {
+        if (state.connected) {
+          $('#authLogin').hidden = true;
+          toast('登录成功', 'ok');
+        }
+      })
+      .catch(function (err) { toast(err.message, 'bad'); })
+      .then(function () { setBusy($('#loginBtn'), false); });
+  }
+
+  function changePassword() {
+    var token = $('#changeTokenInput').value.trim();
+    var pwd = $('#changePassword').value;
+    var pwd2 = $('#changePassword2').value;
+    if (!token) { toast('请粘贴当前 GitHub 令牌', 'bad'); return; }
+    if (!passwordValid(pwd)) { toast('新密码至少 12 位，建议 14 位以上', 'bad'); return; }
+    if (pwd !== pwd2) { toast('两次输入的密码不一致', 'bad'); return; }
+    var oldToken = state.token;
+    state.token = token;
+    setBusy($('#changePwdSaveBtn'), true, '保存中…');
+    gh('https://api.github.com/user')
+      .then(function () { return encryptToken(token, pwd); })
+      .then(function (payload) {
+        return putFile(AUTH_PATH, utf8ToBase64(JSON.stringify(payload, null, 2) + '\n'),
+          'admin: update password login').then(function () { return payload; });
+      })
+      .then(function (payload) {
+        state.auth = payload;
+        $('#changeTokenInput').value = '';
+        $('#changePassword').value = '';
+        $('#changePassword2').value = '';
+        $('#changePwdBox').hidden = true;
+        return connectWithToken(token);
+      })
+      .then(function () { toast('密码已更新', 'ok'); })
+      .catch(function (err) { state.token = oldToken; toast('更新失败：' + err.message, 'bad'); })
+      .then(function () { setBusy($('#changePwdSaveBtn'), false); });
+  }
+
   /* ---------------- 事件绑定 ---------------- */
   function bind() {
     $('#themeBtn').addEventListener('click', function () {
@@ -924,13 +1138,25 @@
     });
 
     $('#connectBtn').addEventListener('click', connect);
+    $('#setupBtn').addEventListener('click', setupPassword);
+    $('#loginBtn').addEventListener('click', loginWithPassword);
+    $('#loginPassword').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') loginWithPassword();
+    });
+    $('#changePwdBtn').addEventListener('click', function () {
+      $('#changePwdBox').hidden = !$('#changePwdBox').hidden;
+    });
+    $('#changePwdSaveBtn').addEventListener('click', changePassword);
     $('#logoutBtn').addEventListener('click', function () {
       state.token = '';
       state.connected = false;
       $('#tokenInput').value = '';
       try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
-      setConn('已清除令牌，未连接', '');
-      toast('已清除本机保存的令牌', 'ok');
+      $('#changePwdBtn').hidden = true;
+      $('#changePwdBox').hidden = true;
+      if (state.auth) $('#authLogin').hidden = false;
+      setConn('已退出本机登录，可用密码重新登录', '');
+      toast('已退出本机登录', 'ok');
     });
 
     ['cfgOwner', 'cfgRepo', 'cfgBranch', 'cfgPath'].forEach(function (id) {
@@ -1003,12 +1229,8 @@
     fillSettingsForm();
 
     try { state.token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
-    if (state.token) {
-      $('#tokenInput').value = state.token;
-      connect();
-    } else {
-      setConn('未连接 · 请粘贴 GitHub 令牌', '');
-    }
+    if (state.token) $('#tokenInput').value = state.token;
+    initAuth();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

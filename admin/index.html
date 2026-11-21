@@ -35,17 +35,47 @@
 
     <main class="admin-grid">
       <aside class="admin-side">
-        <section class="admin-card" aria-labelledby="connectTitle">
+        <section class="admin-card" aria-labelledby="authTitle">
           <div class="card-heading">
-            <h2 id="connectTitle">GitHub 连接</h2>
+            <h2 id="authTitle">后台登录</h2>
             <span id="connectionDot" class="status-dot" aria-hidden="true"></span>
           </div>
-          <p class="muted small">令牌只保存在当前浏览器，不会经过任何第三方服务器。</p>
+          <p class="muted small">平时只输密码；只有首次设置或修改密码时才需要 GitHub 令牌。</p>
 
-          <label class="field-label" for="tokenInput">个人访问令牌（PAT）</label>
-          <div class="token-row">
-            <input id="tokenInput" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_... 或 github_pat_...">
-            <button id="toggleToken" class="btn btn-mini" type="button">显示</button>
+          <div id="authSetup" hidden>
+            <label class="field-label" for="setupTokenInput">GitHub 令牌（仅首次/修改时用）</label>
+            <div class="token-row">
+              <input id="setupTokenInput" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_... 或 github_pat_...">
+            </div>
+            <label class="field-label" for="setupPassword">设置后台密码</label>
+            <input id="setupPassword" class="input" type="password" autocomplete="new-password" placeholder="至少 12 位，建议 14 位以上">
+            <label class="field-label" for="setupPassword2">确认密码</label>
+            <input id="setupPassword2" class="input" type="password" autocomplete="new-password" placeholder="再输入一次">
+            <p class="muted tiny">密码用来加密令牌后写入仓库；密码强度就是安全边界。忘记密码只能靠令牌重设。</p>
+            <div class="btn-row">
+              <button id="setupBtn" class="btn btn-primary" type="button">设置密码并启用</button>
+            </div>
+          </div>
+
+          <div id="authLogin" hidden>
+            <label class="field-label" for="loginPassword">后台密码</label>
+            <input id="loginPassword" class="input" type="password" autocomplete="current-password" placeholder="输入你设置的密码">
+            <div class="btn-row">
+              <button id="loginBtn" class="btn btn-primary" type="button">登录</button>
+              <button id="changePwdBtn" class="btn btn-mini" type="button" hidden>修改密码 / 更换令牌</button>
+            </div>
+            <details id="changePwdBox" class="repo-settings" hidden>
+              <summary>输入当前 GitHub 令牌后设置新密码</summary>
+              <label class="field-label" for="changeTokenInput">当前 GitHub 令牌</label>
+              <input id="changeTokenInput" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴当前令牌">
+              <label class="field-label" for="changePassword">新密码</label>
+              <input id="changePassword" class="input" type="password" autocomplete="new-password" placeholder="至少 12 位">
+              <label class="field-label" for="changePassword2">确认新密码</label>
+              <input id="changePassword2" class="input" type="password" autocomplete="new-password" placeholder="再输入一次">
+              <div class="btn-row">
+                <button id="changePwdSaveBtn" class="btn btn-primary" type="button">保存新密码</button>
+              </div>
+            </details>
           </div>
 
           <details class="repo-settings" id="repoSettings">
@@ -60,10 +90,22 @@
           </details>
 
           <div class="btn-row">
-            <button id="connectBtn" class="btn btn-primary" type="button">连接 GitHub</button>
-            <button id="logoutBtn" class="btn btn-danger-ghost" type="button">清除令牌</button>
+            <button id="logoutBtn" class="btn btn-danger-ghost" type="button">退出本机登录</button>
           </div>
-          <div id="connectionState" class="connection-state" role="status">未连接</div>
+          <div id="connectionState" class="connection-state" role="status">正在检查登录配置…</div>
+
+          <details class="repo-settings" id="advancedToken">
+            <summary>高级：直接使用令牌</summary>
+            <p class="muted tiny">忘记密码或加密配置出错时，可在这里用令牌直接连接并重置密码。</p>
+            <label class="field-label" for="tokenInput">个人访问令牌（PAT）</label>
+            <div class="token-row">
+              <input id="tokenInput" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_... 或 github_pat_...">
+              <button id="toggleToken" class="btn btn-mini" type="button">显示</button>
+            </div>
+            <div class="btn-row">
+              <button id="connectBtn" class="btn btn-mini" type="button">用令牌连接</button>
+            </div>
+          </details>
         </section>
 
         <section class="admin-card site-settings-card" aria-labelledby="siteSettingsTitle">
