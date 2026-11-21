@@ -111,6 +111,11 @@
     var avatar = $('#siteAvatar');
     if (avatar) {
       var fallback = avatar.parentNode.querySelector('.avatar-fallback');
+      avatar.onerror = function () {
+        avatar.hidden = true;
+        avatar.removeAttribute('src');
+        if (fallback) fallback.hidden = false;
+      };
       if (SITE.avatar) {
         avatar.src = SITE.avatar;
         avatar.alt = SITE.name + ' 头像';

@@ -68,7 +68,7 @@
 
         <section class="admin-card site-settings-card" aria-labelledby="siteSettingsTitle">
           <h2 id="siteSettingsTitle">站点设置</h2>
-          <p class="muted small">这里改的是主站左上角头像、站点名和描述，保存后自动发布。</p>
+          <p class="muted small">这里改的是主站左上角头像、站点名和描述。上传头像会自动发布；改文字后点保存。</p>
           <label class="field-label">站点名称 <input id="sName" class="input" type="text" placeholder="重构博客"></label>
           <label class="field-label">站点描述 <textarea id="sDescription" class="input" rows="2" placeholder="一句话介绍你的站点"></textarea></label>
           <div class="avatar-setting-row">
@@ -81,8 +81,8 @@
           </div>
           <input id="avatarInput" type="file" accept="image/*">
           <div class="btn-row">
-            <button id="uploadAvatarBtn" class="btn btn-mini" type="button">上传头像</button>
-            <button id="resetAvatarBtn" class="btn btn-mini" type="button" hidden>恢复默认 R</button>
+            <button id="uploadAvatarBtn" class="btn btn-mini" type="button">上传并发布头像</button>
+            <button id="resetAvatarBtn" class="btn btn-mini" type="button" hidden>恢复默认 R 并发布</button>
             <button id="saveSiteBtn" class="btn btn-primary" type="button">保存站点设置</button>
           </div>
           <div id="siteState" class="site-state" role="status">尚未加载站点设置</div>

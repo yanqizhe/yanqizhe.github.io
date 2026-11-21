@@ -849,8 +849,12 @@
     input.click();
   }
 
-  function saveSiteSettings() {
-    if (!state.token || !state.connected) { toast('请先连接 GitHub', 'bad'); return; }
+  function saveSiteSettings(options) {
+    options = options || {};
+    if (!state.token || !state.connected) {
+      toast('请先连接 GitHub', 'bad');
+      return Promise.reject(new Error('未连接'));
+    }
     var cfg = {
       name: $('#sName').value.trim() || '重构博客',
       description: $('#sDescription').value.trim(),
@@ -858,14 +862,16 @@
       avatar: state.settings && state.settings.avatar ? state.settings.avatar : ''
     };
     setBusy($('#saveSiteBtn'), true, '保存中…');
-    putFile(SETTINGS_PATH, utf8ToBase64(JSON.stringify(cfg, null, 2) + '\n'), 'admin: update site settings')
+    return putFile(SETTINGS_PATH, utf8ToBase64(JSON.stringify(cfg, null, 2) + '\n'), 'admin: update site settings')
       .then(function () {
         state.settings = cfg;
         fillSettingsForm();
-        $('#siteState').textContent = '已保存，稍等片刻主站生效';
-        toast('站点设置已保存', 'ok');
+        $('#siteState').textContent = options.auto
+          ? '已发布，稍等片刻主站生效'
+          : '已保存，稍等片刻主站生效';
+        toast(options.auto ? '头像已上传并发布' : '站点设置已保存', 'ok');
       })
-      .catch(function (err) { toast('保存失败：' + err.message, 'bad'); })
+      .catch(function (err) { toast('保存失败：' + err.message, 'bad'); throw err; })
       .then(function () { setBusy($('#saveSiteBtn'), false); });
   }
 
@@ -882,20 +888,22 @@
           state.settings = state.settings || defaultSettings();
           state.settings.avatar = url;
           fillSettingsForm();
-          $('#siteState').textContent = '头像已上传，请点击「保存站点设置」发布';
-          toast('头像已上传，点击「保存站点设置」后生效', 'ok');
+          $('#siteState').textContent = '头像已上传，正在发布…';
+          return saveSiteSettings({ auto: true });
         })
-        .catch(function (err) { toast('上传失败：' + err.message, 'bad'); })
+        .catch(function (err) { toast('头像操作失败：' + err.message, 'bad'); })
         .then(function () { setBusy($('#uploadAvatarBtn'), false); });
     };
     input.click();
   }
 
   function resetAvatar() {
+    if (!state.token || !state.connected) { toast('请先连接 GitHub', 'bad'); return; }
     state.settings = state.settings || defaultSettings();
     state.settings.avatar = '';
     fillSettingsForm();
-    $('#siteState').textContent = '已恢复默认 R，请点击「保存站点设置」发布';
+    $('#siteState').textContent = '正在恢复默认头像…';
+    saveSiteSettings({ auto: true });
   }
 
   /* ---------------- 事件绑定 ---------------- */
