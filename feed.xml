@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>重构博客 · Sample</title>
+  <link>index.html</link>
+  <atom:link href="feed.xml" rel="self" type="application/rss+xml"/>
+  <description>静态站爱好者 · 写点技术与工程笔记 · 静态复刻样品，内容为占位</description>
+  <language>zh-CN</language>
+  <lastBuildDate>Sun, 08 Nov 2026 00:00:00 GMT</lastBuildDate>
+  <item>
+    <title>从 Hugo 到零运行时：一次静态博客的重构记录</title>
+    <link>post.html?slug=rebuild-static-blog</link>
+    <guid isPermaLink="false">sample:rebuild-static-blog</guid>
+    <pubDate>Sun, 08 Nov 2026 00:00:00 GMT</pubDate>
+    <description>把模板、数据、交互三层拆开，用纯 HTML / CSS / JS 复刻一遍 Stack 主题的信息架构，顺便记录哪些东西其实可以不要。</description>
+    <category>Original</category>
+    <category>静态站</category>
+    <category>前端</category>
+    <category>重构</category>
+  </item>
+  <item>
+    <title>content-visibility 与 contain-intrinsic-size 实战</title>
+    <link>post.html?slug=content-visibility-practice</link>
+    <guid isPermaLink="false">sample:content-visibility-practice</guid>
+    <pubDate>Tue, 27 Oct 2026 00:00:00 GMT</pubDate>
+    <description>长列表滚动掉帧时，先别急着上虚拟滚动；浏览器自带的跳过渲染能力往往够用，而且不会破坏可访问性与查找。</description>
+    <category>Original</category>
+    <category>前端</category>
+    <category>性能</category>
+    <category>CSS</category>
+  </item>
+  <item>
+    <title>中文 Web 字体分片：把首屏字体成本压到 0</title>
+    <link>post.html?slug=cjk-font-split</link>
+    <guid isPermaLink="false">sample:cjk-font-split</guid>
+    <pubDate>Thu, 15 Oct 2026 00:00:00 GMT</pubDate>
+    <description>一个中文字体动辄数 MB。分片的思想是按 unicode-range 拆成小块，让浏览器只下载这一页真正用到的字。</description>
+    <category>Original</category>
+    <category>字体</category>
+    <category>性能</category>
+    <category>前端</category>
+  </item>
+  <item>
+    <title>Pagefind 背后的倒排索引</title>
+    <link>post.html?slug=pagefind-inverted-index</link>
+    <guid isPermaLink="false">sample:pagefind-inverted-index</guid>
+    <pubDate>Fri, 02 Oct 2026 00:00:00 GMT</pubDate>
+    <description>构建期把文章切成词项，生成「词 → 文章」的映射；查询时只做查表，不扫全文。中文需要额外的二元分词。</description>
+    <category>Repost</category>
+    <category>搜索</category>
+    <category>算法</category>
+    <category>静态站</category>
+  </item>
+  <item>
+    <title>Core Web Vitals：LCP / INP / CLS 的测量方法</title>
+    <link>post.html?slug=core-web-vitals</link>
+    <guid isPermaLink="false">sample:core-web-vitals</guid>
+    <pubDate>Tue, 22 Sep 2026 00:00:00 GMT</pubDate>
+    <description>三个指标分别对应「首屏快不快」「点了卡不卡」「页面跳不跳」，目标值分别是 2.5s、200ms 与 0.1。</description>
+    <category>Repost</category>
+    <category>性能</category>
+    <category>指标</category>
+    <category>前端</category>
+  </item>
+  <item>
+    <title>Long Task 与 LoAF：怎样量化「卡」</title>
+    <link>post.html?slug=long-task-loaf</link>
+    <guid isPermaLink="false">sample:long-task-loaf</guid>
+    <pubDate>Thu, 10 Sep 2026 00:00:00 GMT</pubDate>
+    <description>60Hz 屏幕每帧只有 16.6ms。任何超过 50ms 的主线程任务都会推迟输入响应，Long Animation Frames 能告诉你卡在哪段脚本。</description>
+    <category>Original</category>
+    <category>性能</category>
+    <category>浏览器</category>
+    <category>前端</category>
+  </item>
+  <item>
+    <title>Hugo Modules 与主题版本管理</title>
+    <link>post.html?slug=hugo-modules-theme</link>
+    <guid isPermaLink="false">sample:hugo-modules-theme</guid>
+    <pubDate>Fri, 28 Aug 2026 00:00:00 GMT</pubDate>
+    <description>用 Go Modules 引入主题，可以让主题升级变成一次依赖更新；但 v4 及以上的大版本需要手工改配置。</description>
+    <category>Repost</category>
+    <category>Hugo</category>
+    <category>构建</category>
+    <category>工具链</category>
+  </item>
+  <item>
+    <title>Waline 评论系统的隐私边界</title>
+    <link>post.html?slug=waline-privacy</link>
+    <guid isPermaLink="false">sample:waline-privacy</guid>
+    <pubDate>Fri, 14 Aug 2026 00:00:00 GMT</pubDate>
+    <description>评论是全站唯一有状态的部分。把「收集什么、公开什么、交给谁」写清楚，比选哪个后端更重要。</description>
+    <category>Original</category>
+    <category>评论</category>
+    <category>隐私</category>
+    <category>Serverless</category>
+  </item>
+  <item>
+    <title>从 Cloudflare Pages 迁往 Workers</title>
+    <link>post.html?slug=pages-to-workers</link>
+    <guid isPermaLink="false">sample:pages-to-workers</guid>
+    <pubDate>Thu, 30 Jul 2026 00:00:00 GMT</pubDate>
+    <description>构建产物仍是静态文件，变化在于请求如何被路由与处理；迁移说明通常写在 README 里而不是配置里。</description>
+    <category>Repost</category>
+    <category>Cloudflare</category>
+    <category>部署</category>
+    <category>静态站</category>
+  </item>
+  <item>
+    <title>Cloudflare Pages 单文件 25 MiB 限制与媒体压缩</title>
+    <link>post.html?slug=media-compression</link>
+    <guid isPermaLink="false">sample:media-compression</guid>
+    <pubDate>Sun, 12 Jul 2026 00:00:00 GMT</pubDate>
+    <description>音频转 Opus、视频转 VP9 + Opus 的 WebM，是让媒体文件稳定落在限制内的常用做法。</description>
+    <category>Repost</category>
+    <category>媒体</category>
+    <category>工具</category>
+    <category>部署</category>
+  </item>
+  <item>
+    <title>原创与转载：一套可执行的内容治理规则</title>
+    <link>post.html?slug=content-governance</link>
+    <guid isPermaLink="false">sample:content-governance</guid>
+    <pubDate>Thu, 25 Jun 2026 00:00:00 GMT</pubDate>
+    <description>判定标准从严，难以判断时一律从宽标为转载；引用、翻译排版与读者不可见的代码不计入主要内容。</description>
+    <category>Original</category>
+    <category>写作</category>
+    <category>治理</category>
+    <category>AIGC</category>
+  </item>
+  <item>
+    <title>Feature Flags 在静态站里的轻量实现</title>
+    <link>post.html?slug=feature-flags-static</link>
+    <guid isPermaLink="false">sample:feature-flags-static</guid>
+    <pubDate>Wed, 03 Jun 2026 00:00:00 GMT</pubDate>
+    <description>没有服务端也能做开关：localStorage 存状态，body 上加 class，CSS 负责阉割特性。</description>
+    <category>Original</category>
+    <category>前端</category>
+    <category>调试</category>
+    <category>CSS</category>
+  </item>
+  <item>
+    <title>深浅主题切换如何避免 FOUC</title>
+    <link>post.html?slug=theme-fouc</link>
+    <guid isPermaLink="false">sample:theme-fouc</guid>
+    <pubDate>Mon, 18 May 2026 00:00:00 GMT</pubDate>
+    <description>主题决定必须在样式生效前完成，否则首屏会先闪一下浅色再变暗。</description>
+    <category>Original</category>
+    <category>CSS</category>
+    <category>主题</category>
+    <category>前端</category>
+  </item>
+  <item>
+    <title>打印样式与 prefers-reduced-motion</title>
+    <link>post.html?slug=print-and-motion</link>
+    <guid isPermaLink="false">sample:print-and-motion</guid>
+    <pubDate>Wed, 29 Apr 2026 00:00:00 GMT</pubDate>
+    <description>两个常被忽略的媒体查询，却能显著改善可访问性；实现成本通常不到二十行 CSS。</description>
+    <category>Repost</category>
+    <category>CSS</category>
+    <category>可访问性</category>
+  </item>
+  <item>
+    <title>静态站点的搜索：从 O(n) 扫描到 bigram 倒排索引</title>
+    <link>post.html?slug=search-bigram</link>
+    <guid isPermaLink="false">sample:search-bigram</guid>
+    <pubDate>Mon, 16 Mar 2026 00:00:00 GMT</pubDate>
+    <description>几十篇文章的规模下，构建期索引可以用一份极简的运行时索引替代，代价是几百行脚本。</description>
+    <category>Original</category>
+    <category>搜索</category>
+    <category>算法</category>
+    <category>前端</category>
+  </item>
+  <item>
+    <title>GitInfo 与浅克隆：页脚时间为什么不准</title>
+    <link>post.html?slug=gitinfo-shallow-clone</link>
+    <guid isPermaLink="false">sample:gitinfo-shallow-clone</guid>
+    <pubDate>Fri, 20 Feb 2026 00:00:00 GMT</pubDate>
+    <description>CI 默认浅克隆时，GitInfo 取到的是最新提交而非文件最后修改提交，页脚时间会集体变成同一天。</description>
+    <category>Repost</category>
+    <category>Hugo</category>
+    <category>CI</category>
+    <category>Git</category>
+  </item>
+</channel>
+</rss>

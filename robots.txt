@@ -1,0 +1,6 @@
+# 样品站 robots.txt · GitHub Pages 部署
+# 将来若绑定自定义域名，把下面 Sitemap 的 yanqizhe.github.io 换成新域名即可
+User-agent: *
+Allow: /
+
+Sitemap: https://yanqizhe.github.io/sitemap.xml

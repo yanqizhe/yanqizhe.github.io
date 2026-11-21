@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="重构博客样品图标">
+  <rect width="512" height="512" rx="112" fill="#34495e"/>
+  <path d="M150 372V140h108c46 0 74 22 74 60 0 27-14 46-39 55l52 117h-56l-46-107h-37v107h-56zm56-155h47c20 0 31-9 31-25s-11-25-31-25h-47v50z" fill="#ffffff"/>
+  <circle cx="372" cy="152" r="26" fill="#2a9d8f"/>
+</svg>

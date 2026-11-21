@@ -1,0 +1,30 @@
+{
+  "name": "重构博客 · Sample",
+  "short_name": "重构博客",
+  "description": "静态站爱好者 · 写点技术与工程笔记 · Stack 风格静态复刻样品",
+  "lang": "zh-CN",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f5fa",
+  "theme_color": "#34495e",
+  "categories": [
+    "blog",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

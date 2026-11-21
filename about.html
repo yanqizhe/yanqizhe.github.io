@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-scheme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="样品站的说明页：内容标准、AIGC 标注、评论隐私、透明度声明与致谢。">
+<meta name="generator" content="Static Sample / Stack-style">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f5fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#303030" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="index, follow">
+<title>关于 · 重构博客样品</title>
+<link rel="canonical" href="about.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2334495e'/%3E%3Ctext x='32' y='44' font-size='34' font-family='sans-serif' font-weight='700' text-anchor='middle' fill='white'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="alternate" type="application/rss+xml" href="feed.xml" title="重构博客 RSS">
+<link rel="stylesheet" href="assets/style.css">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="重构博客 · Sample">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="关于 · 重构博客样品">
+<meta property="og:description" content="样品站的说明页：内容标准、AIGC 标注、评论隐私、透明度声明与致谢。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="关于 · 重构博客样品">
+<meta name="twitter:description" content="样品站的说明页：内容标准、AIGC 标注、评论隐私、透明度声明与致谢。">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebPage", "name": "关于 · 重构博客样品", "description": "样品站的说明页：内容标准、AIGC 标注、评论隐私、透明度声明与致谢。", "inLanguage": "zh-CN", "url": "about.html"}</script>
+<script>
+  /* 主题预置：必须早于样式生效，避免深浅主题闪烁（FOUC / FART） */
+  (function () {
+    var k = 'StackColorScheme', v = 'auto';
+    try { v = localStorage.getItem(k) || localStorage.getItem('rb-theme') || 'auto'; } catch (e) {}
+    var forced = /[?&]scheme=(light|dark)/.exec(location.search);
+    if (forced) v = forced[1];
+    var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-scheme',
+      (v === 'dark' || (v === 'auto' && dark)) ? 'dark' : 'light');
+  })();
+</script>
+</head>
+<body data-page="about">
+<div class="reading-progress" id="readingProgress" role="progressbar" aria-label="阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+<div class="container main-container flex on-phone--column extended">
+
+<aside class="sidebar left-sidebar sticky">
+  <div class="sidebar-head">
+    <figure class="site-avatar">
+      <a href="index.html" aria-label="返回主页"><span class="avatar-fallback">R</span></a>
+      <span class="emoji" id="siteEmoji">&#129514;</span>
+    </figure>
+    <div class="site-meta">
+      <h1 class="site-name"><a href="index.html" id="siteName">重构博客</a></h1>
+      <h2 class="site-description" id="siteDescription">静态站爱好者 · 写点技术与工程笔记</h2>
+    </div>
+    <button class="hamburger" id="toggleMenu" type="button" aria-label="切换菜单" aria-expanded="false"><span class="bars"></span></button>
+  </div>
+
+  <ol class="menu-social">
+    <li><a href="#" title="Domain" rel="me"><span data-icon="link"></span></a></li>
+    <li><a href="#" title="Email" rel="me"><span data-icon="mail"></span></a></li>
+    <li><a href="#" title="GitHub" rel="me"><span data-icon="github"></span></a></li>
+    <li><a href="#" title="RSS" rel="me"><span data-icon="rss"></span></a></li>
+    <li><a href="#" title="Keybase" rel="me"><span data-icon="key"></span></a></li>
+  </ol>
+
+  <ol class="menu" id="main-menu">
+    <li><a href="index.html" data-nav="home"><span data-icon="home"></span><span>主页</span></a></li>
+    <li><a href="archives.html" data-nav="archives"><span data-icon="archive"></span><span>归档</span></a></li>
+    <li><a href="categories.html" data-nav="categories"><span data-icon="hash"></span><span>分类</span></a></li>
+    <li><a href="tags.html" data-nav="tags"><span data-icon="tag"></span><span>标签</span></a></li>
+    <li><a href="search.html" data-nav="search"><span data-icon="search"></span><span>搜索</span></a></li>
+    <li><a href="friends.html" data-nav="friends"><span data-icon="link"></span><span>友情链接</span></a></li>
+    <li><a href="about.html" data-nav="about"><span data-icon="info"></span><span>关于</span></a></li>
+    <li><a href="debug.html" data-nav="debug"><span data-icon="code"></span><span>开发人员工具</span></a></li>
+    <li class="menu-bottom-section"><ol class="menu">
+      <li><button class="quick-search-trigger" type="button" data-action="quick-search" aria-label="快捷搜索">
+        <span data-icon="search"></span><span>快捷搜索</span><kbd>Ctrl K</kbd></button></li>
+      <li><button class="dark-toggle" id="themeBtn" type="button" aria-label="切换配色方案">
+        <span data-icon="sun" class="icon-sun"></span><span data-icon="moon" class="icon-moon"></span>
+        <span>配色方案</span><span class="scheme-label" id="schemeLabel">自动</span>
+      </button></li>
+    </ol></li>
+  </ol>
+</aside>
+
+<aside class="sidebar right-sidebar sticky">
+  <section class="widget">
+    <div class="widget-icon"><span data-icon="list"></span></div>
+    <h2 class="widget-title section-title">目录</h2>
+    <div class="widget--toc" id="widgetToc">
+      <ol>
+        <li><a href="#a1">关于本站</a></li>
+        <li><a href="#a2">关于原创与转载</a></li>
+        <li><a href="#a3">关于 AIGC</a></li>
+        <li><a href="#a4">关于评论</a></li>
+        <li><a href="#a5">Warrant Canary</a></li>
+        <li><a href="#a6">流畅度实践</a></li>
+        <li><a href="#a7">致谢</a></li>
+      </ol>
+    </div>
+  </section>
+</aside>
+
+<main class="main full-width">
+  <article class="main-article">
+    <header class="article-header"><div class="article-details">
+      <div class="article-title-wrapper">
+        <h2 class="article-title">关于</h2>
+        <h3 class="article-subtitle">站点定位、内容标准、隐私政策与致谢</h3>
+      </div>
+      <footer class="article-meta"><div class="inline-meta">
+        <span data-icon="calendar" class="icon-sm"></span><time>2026-11-14</time>
+        <span class="sep">·</span><span data-icon="clock" class="icon-sm"></span><time>阅读时长: 4 分钟</time>
+      </div></footer>
+    </div></header>
+    <aside class="article-toc"><details open><summary><div class="article-toc-title"><span data-icon="list"></span><span>目录</span></div></summary>
+      <nav class="toc-nav"><ol>
+        <li><a href="#a1">关于本站</a></li><li><a href="#a2">关于原创与转载</a></li>
+        <li><a href="#a3">关于 AIGC</a></li><li><a href="#a4">关于评论</a></li>
+        <li><a href="#a5">Warrant Canary</a></li><li><a href="#a6">流畅度实践</a></li>
+        <li><a href="#a7">致谢</a></li>
+      </ol></nav>
+    </details></aside>
+    <section class="article-content" id="a1">
+      <h2 id="a1h">关于本站</h2>
+      <p>这是一份<strong>静态博客样品</strong>，用于演示「Hugo + Stack 风格静态站 + 零运行时前端」的形态。页面由纯 HTML / CSS / JavaScript 构成，不依赖任何框架、构建工具或外部 CDN，双击即可打开预览。</p>
+      <p>换成正式版本时，内容数据可直接映射为 Hugo 的 Markdown 与 Front Matter，托管到 Cloudflare Pages，评论与搜索分别交给 Waline 与 Pagefind。</p>
+      <blockquote><p>页面中的作者、文章、声明均为占位内容；样品不冒充任何真实站点或个人。</p></blockquote>
+    </section>
+  </article>
+
+  <div class="aboutgrid">
+    <section class="card rulebox" id="a2">
+      <h2>关于原创与转载</h2>
+      <p>文章按两类归档，判定标准从严：</p>
+      <div class="quote">仅当文章主要内容的绝大部分来源于撰稿者的独立思考、独创性表达、实操经验或一手调研时，才标记为「原创」。</div>
+      <ul>
+        <li>直接转载、仅由 LLM 翻译或排版、仅来自逆向工程的产物 → 标记为「转载」</li>
+        <li>难以判断时，一律从宽标记为「转载」</li>
+        <li>引用文段、翻译排版部分、读者不可见的程序代码，不计入「主要内容」</li>
+        <li>LLM 基于人类创意生成的内容若体现充分人工干预，可标原创，但须附明显 AI 标注</li>
+      </ul>
+    </section>
+    <section class="card rulebox" id="a3">
+      <h2>关于 AIGC</h2>
+      <ul>
+        <li>主要内容中基于 GenAI 生成的图片或文本会明确标注</li>
+        <li>目标：全站主要内容中 AIGC 占比保持低水平，且不再提高</li>
+        <li>LLM 的生成结果不保证正确性，必须由具备相关知识的人人工检查与事实核查</li>
+        <li>文章主体由真人撰写；AI 参与的部分逐处说明</li>
+      </ul>
+      <div class="quote">更多地假定它一定会犯错，会更有利于使用它。</div>
+    </section>
+    <section class="card rulebox" id="a4">
+      <h2>关于评论</h2>
+      <ul>
+        <li>为提供评论服务会收集 IP、User-Agent 等技术信息，但不会以任何方式公开</li>
+        <li>不使用基于 Cookie 的评论功能，不向第三方提供信息（OAuth API 调用除外）</li>
+        <li>使用 Akismet 自动过滤垃圾评论，必要时人工审核；审核仅防垃圾与网络攻击，不涉及观点过滤</li>
+        <li>鼓励使用隐私保护邮箱注册评论身份，以便自行删除评论</li>
+        <li>匿名昵称默认填充随机 UUID，便于区分不同发言者</li>
+      </ul>
+      <p style="color:var(--card-text-color-tertiary);font-size:12.5px;margin-bottom:0">样品站未启用评论服务，此处仅为政策文本示例。</p>
+    </section>
+    <section class="card rulebox" id="a5">
+      <h2>Warrant Canary（透明度声明）</h2>
+      <div class="canary">
+        <span class="dot"></span>
+        <div>
+          <p style="margin:0 0 6px">结构上，这类声明 = <strong>一段带明确日期的静态文本 + 固定的更新节奏</strong>：声明截至某日期未收到特定类型的数据索取或内容审查请求，并承诺定期更新。</p>
+          <p style="margin:0 0 6px">日期应手工写入内容而非自动生成，更新必须由站主主动完成；可选配 PGP 签名以证明发布者身份。</p>
+          <p style="margin:0;color:var(--accent-color);font-size:13px"><strong>本样品不包含任何真实合规声明</strong>，此处仅演示该机制的页面结构。实际使用时须由站主本人核实并背书。</p>
+        </div>
+      </div>
+    </section>
+    <section class="card rulebox" id="a6">
+      <h2>流畅度：本样品落实的性能实践</h2>
+      <ul>
+        <li><strong>零运行时框架</strong>：无虚拟 DOM、无水合；HTML 直出即所现</li>
+        <li><strong>系统字体栈</strong>：字体下载成本为 0；正式站可用 cn-font-split 做中文分片</li>
+        <li><strong>content-visibility: auto</strong> + contain-intrinsic-size：屏外卡片跳过渲染且不跳滚动条</li>
+        <li><strong>固定宽高比封面</strong>：预留尺寸，CLS ≈ 0</li>
+        <li><strong>动画仅 transform / opacity</strong>：只走合成线程，不触发布局与重绘</li>
+        <li><strong>倒排索引 + 120ms 防抖</strong>：把搜索从 O(n) 全文扫描变成查表</li>
+        <li><strong>一次性 innerHTML</strong>、passive 滚动监听、rAF 节流、prefers-reduced-motion 支持</li>
+      </ul>
+      <p style="margin-bottom:0"><a href="debug.html">→ 打开调试面板，实时查看 FPS 与 Long Task</a></p>
+    </section>
+    <section class="card rulebox" id="a7">
+      <h2>致谢</h2>
+      <p>正式版本会依赖这些开源项目与免费服务（样品本身未使用）：</p>
+      <ul>
+        <li>静态生成与主题：Hugo、hugo-theme-stack</li>
+        <li>托管与分发：Cloudflare Pages、GitHub</li>
+        <li>评论与搜索：Waline、Akismet、Pagefind</li>
+        <li>内容与媒体工具：Prettier、markitdown、FFmpeg、HandBrake</li>
+        <li>字体方案：Fontsource、cn-font-split 及各位字体设计者</li>
+      </ul>
+      <div class="stackline" id="stackLine" style="margin:10px 0"></div>
+      <p style="margin-bottom:0;color:var(--card-text-color-tertiary)">以及所有开源项目维护者，与正在阅读的你。</p>
+    </section>
+  </div>
+<footer class="site-footer">
+  <section class="copyright" id="footerCopyright">© 2026 重构博客 · Sample</section>
+  <section class="powerby"><span id="footerPowerby">样品: static-demo</span><br>
+    使用 <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> 构建 ·
+    主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener">Stack</a></b>
+    由 <a href="https://jimmycai.com/" target="_blank" rel="noopener">Jimmy</a> 设计
+    <span style="opacity:.8">（本页为结构复刻样品，非原站副本）</span>
+  </section>
+  <p class="footer-disclaimer" id="footerDisclaimer">本博客内容仅供参考。</p>
+</footer>
+</main>
+</div>
+
+<button class="totop" id="toTop" type="button" aria-label="回到顶部">↑</button>
+
+<dialog class="quick-search-dialog" id="quickSearch" aria-label="快捷搜索">
+  <div class="qs-head">
+    <span data-icon="search"></span>
+    <input id="quickSearchInput" type="search" placeholder="搜索文章、标签、正文…" autocomplete="off" aria-label="搜索关键词">
+    <kbd>Esc</kbd>
+  </div>
+  <div class="qs-results" id="quickSearchResults"></div>
+  <div class="qs-foot">倒排索引 · 中文 bigram 分词 · 全部在本地完成，不发起任何网络请求</div>
+</dialog>
+
+<dialog class="shortcut-dialog" id="shortcutHelp" aria-label="键盘快捷键">
+  <h2>键盘快捷键</h2>
+  <div class="shortcut-row"><span>聚焦搜索框</span><kbd>/</kbd></div>
+  <div class="shortcut-row"><span>快捷搜索</span><kbd>Ctrl / ⌘ + K</kbd></div>
+  <div class="shortcut-row"><span>首页上下切换文章</span><kbd>J / K</kbd></div>
+  <div class="shortcut-row"><span>打开选中的文章</span><kbd>Enter</kbd></div>
+  <div class="shortcut-row"><span>打开本帮助</span><kbd>?</kbd></div>
+  <div class="shortcut-row"><span>关闭弹层</span><kbd>Esc</kbd></div>
+  <form method="dialog" style="margin-top:16px;text-align:right">
+    <button class="btn btn-primary" type="submit">知道了</button>
+  </form>
+</dialog>
+
+<dialog class="lightbox" id="lightbox" aria-label="图片预览"><img id="lightboxImg" alt=""></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  /* Service Worker 仅在 http(s) 下注册；file:// 双击预览保持零副作用 */
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>

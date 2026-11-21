@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-scheme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="静态博客样品站首页：Stack 风格三栏布局，零运行时、零依赖。">
+<meta name="generator" content="Static Sample / Stack-style">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f5f5fa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#303030" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="index, follow">
+<title>首页 · 重构博客样品</title>
+<link rel="canonical" href="index.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2334495e'/%3E%3Ctext x='32' y='44' font-size='34' font-family='sans-serif' font-weight='700' text-anchor='middle' fill='white'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="assets/icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="alternate" type="application/rss+xml" href="feed.xml" title="重构博客 RSS">
+<link rel="stylesheet" href="assets/style.css">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="重构博客 · Sample">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="首页 · 重构博客样品">
+<meta property="og:description" content="静态博客样品站首页：Stack 风格三栏布局，零运行时、零依赖。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="首页 · 重构博客样品">
+<meta name="twitter:description" content="静态博客样品站首页：Stack 风格三栏布局，零运行时、零依赖。">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "重构博客 · Sample", "description": "Stack 风格静态博客复刻样品，内容与身份均为占位。", "inLanguage": "zh-CN", "url": "index.html"}</script>
+<script>
+  /* 主题预置：必须早于样式生效，避免深浅主题闪烁（FOUC / FART） */
+  (function () {
+    var k = 'StackColorScheme', v = 'auto';
+    try { v = localStorage.getItem(k) || localStorage.getItem('rb-theme') || 'auto'; } catch (e) {}
+    var forced = /[?&]scheme=(light|dark)/.exec(location.search);
+    if (forced) v = forced[1];
+    var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.setAttribute('data-scheme',
+      (v === 'dark' || (v === 'auto' && dark)) ? 'dark' : 'light');
+  })();
+</script>
+</head>
+<body data-page="home">
+<div class="reading-progress" id="readingProgress" role="progressbar" aria-label="阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+<div class="container main-container flex on-phone--column extended">
+
+<aside class="sidebar left-sidebar sticky">
+  <div class="sidebar-head">
+    <figure class="site-avatar">
+      <a href="index.html" aria-label="返回主页"><span class="avatar-fallback">R</span></a>
+      <span class="emoji" id="siteEmoji">&#129514;</span>
+    </figure>
+    <div class="site-meta">
+      <h1 class="site-name"><a href="index.html" id="siteName">重构博客</a></h1>
+      <h2 class="site-description" id="siteDescription">静态站爱好者 · 写点技术与工程笔记</h2>
+    </div>
+    <button class="hamburger" id="toggleMenu" type="button" aria-label="切换菜单" aria-expanded="false"><span class="bars"></span></button>
+  </div>
+
+  <ol class="menu-social">
+    <li><a href="#" title="Domain" rel="me"><span data-icon="link"></span></a></li>
+    <li><a href="#" title="Email" rel="me"><span data-icon="mail"></span></a></li>
+    <li><a href="#" title="GitHub" rel="me"><span data-icon="github"></span></a></li>
+    <li><a href="#" title="RSS" rel="me"><span data-icon="rss"></span></a></li>
+    <li><a href="#" title="Keybase" rel="me"><span data-icon="key"></span></a></li>
+  </ol>
+
+  <ol class="menu" id="main-menu">
+    <li><a href="index.html" data-nav="home"><span data-icon="home"></span><span>主页</span></a></li>
+    <li><a href="archives.html" data-nav="archives"><span data-icon="archive"></span><span>归档</span></a></li>
+    <li><a href="categories.html" data-nav="categories"><span data-icon="hash"></span><span>分类</span></a></li>
+    <li><a href="tags.html" data-nav="tags"><span data-icon="tag"></span><span>标签</span></a></li>
+    <li><a href="search.html" data-nav="search"><span data-icon="search"></span><span>搜索</span></a></li>
+    <li><a href="friends.html" data-nav="friends"><span data-icon="link"></span><span>友情链接</span></a></li>
+    <li><a href="about.html" data-nav="about"><span data-icon="info"></span><span>关于</span></a></li>
+    <li><a href="debug.html" data-nav="debug"><span data-icon="code"></span><span>开发人员工具</span></a></li>
+    <li class="menu-bottom-section"><ol class="menu">
+      <li><button class="quick-search-trigger" type="button" data-action="quick-search" aria-label="快捷搜索">
+        <span data-icon="search"></span><span>快捷搜索</span><kbd>Ctrl K</kbd></button></li>
+      <li><button class="dark-toggle" id="themeBtn" type="button" aria-label="切换配色方案">
+        <span data-icon="sun" class="icon-sun"></span><span data-icon="moon" class="icon-moon"></span>
+        <span>配色方案</span><span class="scheme-label" id="schemeLabel">自动</span>
+      </button></li>
+    </ol></li>
+  </ol>
+</aside>
+
+<aside class="sidebar right-sidebar sticky">
+  <form class="search-form widget" id="searchForm" action="search.html" method="get" role="search">
+    <p><label for="searchInput">搜索</label>
+      <input id="searchInput" name="keyword" type="search" placeholder="输入关键词..." autocomplete="off" required>
+      <button type="submit" title="搜索"><span data-icon="search"></span></button>
+    </p>
+  </form>
+  <section class="widget archives">
+    <div class="widget-icon"><span data-icon="infinity"></span></div>
+    <h2 class="widget-title section-title"><a href="archives.html">归档</a></h2>
+    <div class="widget-archive--list" id="widgetArchives"></div>
+  </section>
+  <section class="widget tagCloud">
+    <div class="widget-icon"><span data-icon="hash"></span></div>
+    <h2 class="widget-title section-title"><a href="categories.html">分类</a></h2>
+    <div class="tagCloud-tags" id="widgetCategories"></div>
+  </section>
+  <section class="widget tagCloud">
+    <div class="widget-icon"><span data-icon="tag"></span></div>
+    <h2 class="widget-title section-title"><a href="tags.html">标签云</a></h2>
+    <div class="tagCloud-tags" id="widgetTags"></div>
+  </section>
+</aside>
+
+<main class="main full-width">
+  <div class="pagehead">
+    <h1 id="pageTitle">最新文章</h1>
+    <p>Stack 风格三栏布局 · 静态直出 · 零外部请求</p>
+  </div>
+  <div class="notice" id="siteNotice">演示样品：布局与信息架构参照 hugo-theme-stack，内容与身份均为占位。</div>
+  <p class="searchmeta" id="searchMeta"></p>
+  <section class="article-list" id="postlist" aria-label="文章列表"></section>
+  <nav class="pagination" id="pagination" role="navigation" aria-label="分页"></nav>
+  <dialog class="pagination-jump-dialog" id="paginationJump" aria-labelledby="pagination-jump-title">
+    <form method="dialog" class="pagination-jump-form">
+      <header><label id="pagination-jump-title" class="title" for="jumpInput">跳转到页码</label><span class="subtitle" id="jumpMax">(1 - 1)</span></header>
+      <div class="pagination-jump-input-group">
+        <input type="number" id="jumpInput" min="1" value="1" autocomplete="off" required>
+        <button class="btn btn-primary" type="submit">跳转</button>
+      </div>
+      <div class="pagination-jump-hint"><kbd>Enter</kbd><span>按 Enter 键跳转</span></div>
+    </form>
+  </dialog>
+<footer class="site-footer">
+  <section class="copyright" id="footerCopyright">© 2026 重构博客 · Sample</section>
+  <section class="powerby"><span id="footerPowerby">样品: static-demo</span><br>
+    使用 <a href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a> 构建 ·
+    主题 <b><a href="https://github.com/CaiJimmy/hugo-theme-stack" target="_blank" rel="noopener">Stack</a></b>
+    由 <a href="https://jimmycai.com/" target="_blank" rel="noopener">Jimmy</a> 设计
+    <span style="opacity:.8">（本页为结构复刻样品，非原站副本）</span>
+  </section>
+  <p class="footer-disclaimer" id="footerDisclaimer">本博客内容仅供参考。</p>
+</footer>
+</main>
+</div>
+
+<button class="totop" id="toTop" type="button" aria-label="回到顶部">↑</button>
+
+<dialog class="quick-search-dialog" id="quickSearch" aria-label="快捷搜索">
+  <div class="qs-head">
+    <span data-icon="search"></span>
+    <input id="quickSearchInput" type="search" placeholder="搜索文章、标签、正文…" autocomplete="off" aria-label="搜索关键词">
+    <kbd>Esc</kbd>
+  </div>
+  <div class="qs-results" id="quickSearchResults"></div>
+  <div class="qs-foot">倒排索引 · 中文 bigram 分词 · 全部在本地完成，不发起任何网络请求</div>
+</dialog>
+
+<dialog class="shortcut-dialog" id="shortcutHelp" aria-label="键盘快捷键">
+  <h2>键盘快捷键</h2>
+  <div class="shortcut-row"><span>聚焦搜索框</span><kbd>/</kbd></div>
+  <div class="shortcut-row"><span>快捷搜索</span><kbd>Ctrl / ⌘ + K</kbd></div>
+  <div class="shortcut-row"><span>首页上下切换文章</span><kbd>J / K</kbd></div>
+  <div class="shortcut-row"><span>打开选中的文章</span><kbd>Enter</kbd></div>
+  <div class="shortcut-row"><span>打开本帮助</span><kbd>?</kbd></div>
+  <div class="shortcut-row"><span>关闭弹层</span><kbd>Esc</kbd></div>
+  <form method="dialog" style="margin-top:16px;text-align:right">
+    <button class="btn btn-primary" type="submit">知道了</button>
+  </form>
+</dialog>
+
+<dialog class="lightbox" id="lightbox" aria-label="图片预览"><img id="lightboxImg" alt=""></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+  /* Service Worker 仅在 http(s) 下注册；file:// 双击预览保持零副作用 */
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    });
+  }
+</script>
+</body>
+</html>
