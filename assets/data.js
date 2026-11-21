@@ -525,19 +525,20 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
-  POSTS.forEach(function (p) {
+  /* 把一篇「源文章」补全为可渲染文章；后台新增/编辑的文章同样走这里 */
+  function hydrate(p) {
     var b = buildBody(p);
     p.body = b.html;
     p.toc = b.toc;
     p.coverImage = makeCover(p);
-    p.lastmod = p.date;
+    p.lastmod = p.lastmod || p.date;
     p.excerpt = p.subtitle;
-    /* 系列分组：按标签语义推断，置顶首篇 */
-    var t = p.tags.join(' ');
+    var t = (p.tags || []).join(' ');
     if (/性能|指标|浏览器|CSS|调试/.test(t)) p.series = '前端性能工程笔记';
     else if (/Hugo|构建|工具链|静态站|部署|Cloudflare|Serverless/.test(t)) p.series = '静态站构建手记';
+    else p.series = '';
     p.featured = p.slug === 'rebuild-static-blog';
-    p.words = p.sections.reduce(function (acc, s) {
+    p.words = (p.sections || []).reduce(function (acc, s) {
       return acc + [s.h, (s.p || []).join(''), (s.list || []).join(''), s.quote || '', s.code || '']
         .join('').replace(/[\s*`#\[\]]/g, '').length;
     }, 0);
@@ -546,12 +547,28 @@
         (s.quote || '') + ' ' + (s.code || '') + ' ' + (s.note ? s.note.join(' ') : '') + ' ' +
         (s.table ? s.table.rows.map(function (r) { return r.join(' '); }).join(' ') : '');
     }).join(' ')].join(' ').toLowerCase();
-  });
+    return p;
+  }
+  function sortPosts() {
+    POSTS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
+  }
+  POSTS.forEach(hydrate);
+  sortPosts();
+  /* 网页后台保存后，主站用远程源数据整体替换（数组保持同一引用，app.js 无需重新取） */
+  function setPosts(rawList) {
+    POSTS.length = 0;
+    (rawList || []).forEach(function (raw) {
+      try { POSTS.push(hydrate(raw)); } catch (e) {}
+    });
+    sortPosts();
+    return POSTS;
+  }
   POSTS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
 
   global.BLOG_DATA = {
     SITE: SITE, MENU: MENU, SOCIAL: SOCIAL, CATEGORIES: CATEGORIES,
     STACK: STACK, FRIENDS: FRIENDS, POSTS: POSTS,
+    setPosts: setPosts,
     pagefindPlaceholder: 'Pagefind 在正式站由构建期生成索引；本样品使用运行时倒排索引。'
   };
 })(window);

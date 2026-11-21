@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN" data-scheme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>文章后台 · 重构博客</title>
+  <script>
+    (function () {
+      try {
+        var s = localStorage.getItem('StackColorScheme') || 'auto';
+        var dark = s === 'dark' || (s === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-scheme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <div class="admin-shell">
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <span class="admin-brand-mark">A</span>
+        <div>
+          <h1>文章后台</h1>
+          <p>静态站 + GitHub API · 无需服务器</p>
+        </div>
+      </div>
+      <div class="admin-top-actions">
+        <a class="btn btn-ghost" href="../index.html" target="_blank" rel="noopener">查看站点</a>
+        <button class="btn btn-ghost" id="themeBtn" type="button" title="切换主题">主题：自动</button>
+      </div>
+    </header>
+
+    <main class="admin-grid">
+      <aside class="admin-side">
+        <section class="admin-card" aria-labelledby="connectTitle">
+          <div class="card-heading">
+            <h2 id="connectTitle">GitHub 连接</h2>
+            <span id="connectionDot" class="status-dot" aria-hidden="true"></span>
+          </div>
+          <p class="muted small">令牌只保存在当前浏览器，不会经过任何第三方服务器。</p>
+
+          <label class="field-label" for="tokenInput">个人访问令牌（PAT）</label>
+          <div class="token-row">
+            <input id="tokenInput" class="input" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_... 或 github_pat_...">
+            <button id="toggleToken" class="btn btn-mini" type="button">显示</button>
+          </div>
+
+          <details class="repo-settings" id="repoSettings">
+            <summary>仓库设置</summary>
+            <div class="settings-grid">
+              <label class="field-label">用户名<input id="cfgOwner" class="input" type="text" spellcheck="false"></label>
+              <label class="field-label">仓库名<input id="cfgRepo" class="input" type="text" spellcheck="false"></label>
+              <label class="field-label">分支<input id="cfgBranch" class="input" type="text" spellcheck="false"></label>
+              <label class="field-label full">文章文件<input id="cfgPath" class="input" type="text" spellcheck="false"></label>
+            </div>
+            <p class="muted tiny">默认值已按你的 Pages 仓库填好，一般不需要改。</p>
+          </details>
+
+          <div class="btn-row">
+            <button id="connectBtn" class="btn btn-primary" type="button">连接 GitHub</button>
+            <button id="logoutBtn" class="btn btn-danger-ghost" type="button">清除令牌</button>
+          </div>
+          <div id="connectionState" class="connection-state" role="status">未连接</div>
+        </section>
+
+        <section class="admin-card guide-card" aria-labelledby="guideTitle">
+          <h2 id="guideTitle">首次使用</h2>
+          <ol class="guide-list">
+            <li>在 GitHub 生成 Fine-grained token，只给本仓库 <code>Contents: read/write</code> 权限。</li>
+            <li>把令牌粘贴到上方，点击「连接 GitHub」。</li>
+            <li>连接成功后会拉取文章列表；点击「新建文章」即可写作。</li>
+            <li>保存后会提交到仓库，稍等片刻主站自动显示新文章。</li>
+          </ol>
+          <p class="muted tiny">不建议使用账号密码。令牌可设置过期时间，随时在 GitHub 撤销。</p>
+        </section>
+      </aside>
+
+      <section class="admin-main" aria-label="文章管理">
+        <div class="admin-toolbar">
+          <div>
+            <h2>文章列表</h2>
+            <p class="muted small" id="postCount">尚未加载</p>
+          </div>
+          <div class="toolbar-actions">
+            <input id="listSearch" class="input search-input" type="search" placeholder="筛选标题 / 标签 / slug">
+            <button id="refreshBtn" class="btn btn-ghost" type="button">重新拉取</button>
+            <button id="newBtn" class="btn btn-primary" type="button">新建文章</button>
+          </div>
+        </div>
+
+        <div id="postList" class="post-list" aria-live="polite">
+          <div class="empty-state">连接 GitHub 后即可管理文章。</div>
+        </div>
+
+        <section id="editor" class="admin-card editor-panel" hidden aria-labelledby="editorTitle">
+          <div class="editor-head">
+            <div>
+              <h2 id="editorTitle">新建文章</h2>
+              <p class="muted small" id="editorHint">保存后会写入仓库的 content/posts.json</p>
+            </div>
+            <button id="collapseEditor" class="btn btn-mini" type="button">收起</button>
+          </div>
+
+          <div class="form-grid">
+            <label class="field-label">标题 <input id="fTitle" class="input" type="text" placeholder="文章标题"></label>
+            <label class="field-label">URL 标识 <input id="fSlug" class="input" type="text" spellcheck="false" placeholder="my-new-post"></label>
+            <label class="field-label full">摘要 <textarea id="fSubtitle" class="input" rows="2" placeholder="一句话介绍这篇文章"></textarea></label>
+            <label class="field-label">分类
+              <select id="fCategory" class="input">
+                <option value="Original">Original · 原创</option>
+                <option value="Repost">Repost · 转载</option>
+              </select>
+            </label>
+            <label class="field-label">发布日期 <input id="fDate" class="input" type="date"></label>
+            <label class="field-label">阅读分钟 <input id="fMinutes" class="input" type="number" min="1" max="120" value="6"></label>
+            <label class="field-label">标签 <input id="fTags" class="input" type="text" placeholder="前端, 性能, 笔记"></label>
+            <label class="field-label full">封面关键词 <input id="fCover" class="input" type="text" placeholder="例如：SSG / REBUILD、METRICS、GIT"></label>
+          </div>
+
+          <div class="editor-tabs" role="tablist" aria-label="编辑模式">
+            <button class="tab active" type="button" data-tab="form" role="tab" aria-selected="true">正文</button>
+            <button class="tab" type="button" data-tab="preview" role="tab" aria-selected="false">预览</button>
+            <button class="tab" type="button" data-tab="json" role="tab" aria-selected="false">JSON</button>
+          </div>
+
+          <div class="editor-panes">
+            <div id="paneForm" class="editor-pane">
+              <textarea id="fBody" class="input body-input" spellcheck="false" placeholder="## 小标题&#10;&#10;正文段落，支持 **加粗**、`行内代码`、[链接](https://example.com)。&#10;&#10;- 列表项&#10;- [x] 已完成任务&#10;&#10;> 引用&#10;&#10;```&#10;代码&#10;```&#10;&#10;| 列 A | 列 B |&#10;| --- | --- |&#10;| 内容 | 内容 |&#10;&#10;::: 提示 | 自定义提示框"></textarea>
+              <div class="syntax-help">
+                <strong>写作语法</strong>
+                <code>## 标题</code> 分节 · <code>- 项目</code> 列表 · <code>&gt; 引用</code> · <code>```</code> 代码块 · <code>| 表格 |</code> · <code>::: 提示 | 内容</code>
+              </div>
+            </div>
+            <div id="panePreview" class="editor-pane" hidden>
+              <article id="preview" class="article-content preview-content"></article>
+            </div>
+            <div id="paneJson" class="editor-pane" hidden>
+              <textarea id="fJson" class="input body-input json-input" spellcheck="false"></textarea>
+              <p class="muted tiny">高级模式：直接编辑文章源数据。切换回「正文」会自动应用到表单。</p>
+            </div>
+          </div>
+
+          <div class="editor-actions">
+            <input id="fMessage" class="input commit-input" type="text" placeholder="提交说明（可选）">
+            <div class="action-buttons">
+              <button id="deleteBtn" class="btn btn-danger-ghost" type="button" hidden>删除文章</button>
+              <button id="cancelBtn" class="btn btn-ghost" type="button">取消</button>
+              <button id="saveBtn" class="btn btn-primary" type="button">保存到 GitHub</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="admin.js"></script>
+</body>
+</html>

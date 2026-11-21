@@ -170,7 +170,8 @@
       return b.score - a.score || (a.post.date < b.post.date ? 1 : -1);
     }).map(function (x) { return x.post; });
   }
-  buildIndex();
+  /* 索引在 loadRemotePosts 之后由 start() 统一构建 */
+  function rebuildIndex() { INDEX = Object.create(null); TERM_COUNT = 0; buildIndex(); }
 
   /* ---------------- small render helpers ---------------- */
   function postUrl(p) { return 'post.html?slug=' + encodeURIComponent(p.slug); }
@@ -901,6 +902,24 @@
     apply();
   }
 
+  /* ---------------- 远程文章（网页后台发布）----------------
+     http(s) 下异步读取 content/posts.json 覆盖内嵌样品；file:// 离线双击时跳过。 */
+  function loadRemotePosts(done) {
+    function finish() { done(); }
+    if (location.protocol === 'file:' || !D.setPosts || typeof fetch !== 'function') { finish(); return; }
+    fetch('content/posts.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (list) {
+        if (Array.isArray(list) && list.length) {
+          D.setPosts(list);
+          INDEX = Object.create(null); TERM_COUNT = 0;
+          buildIndex();
+        }
+        finish();
+      })
+      .catch(finish);
+  }
+
   /* ---------------- boot ---------------- */
   function boot() {
     renderChrome();
@@ -923,6 +942,10 @@
     bindShortcuts();
     bindToTop();
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
+  function start() {
+    rebuildIndex();
+    loadRemotePosts(boot);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
 })();
