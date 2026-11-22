@@ -13,6 +13,9 @@
   var THEME_KEY = 'StackColorScheme';
   var SETTINGS_PATH = 'content/settings.json';
   var AUTH_PATH = 'content/auth.json';
+  var DATA_JS_PATH = 'assets/data.js';
+  var EMBED_BEGIN = '/* === EMBEDDED_POSTS_BEGIN === */';
+  var EMBED_END = '/* === EMBEDDED_POSTS_END === */';
   var KDF_ITERATIONS = 210000;
   var UPLOAD_DIR = 'assets/uploads';
   var DEFAULT_CFG = {
@@ -461,6 +464,31 @@
     return putFile(state.cfg.path, encodePosts(posts), message);
   }
 
+  /* 把最新文章同步进 data.js 的内嵌数组：主站首屏直接渲染，不再等 fetch，秒开。
+     posts.json 仍是权威数据源；这一步失败也不影响发文，只是首屏回退到旧内嵌数据。 */
+  function syncEmbeddedPosts(posts) {
+    return readTextFile(DATA_JS_PATH).then(function (res) {
+      var text = res.text;
+      var a = text.indexOf(EMBED_BEGIN);
+      var b = text.indexOf(EMBED_END, a < 0 ? 0 : a);
+      if (a < 0 || b < 0) throw new Error('data.js 缺少内嵌文章标记');
+      var json = JSON.stringify(posts, null, 2);
+      var next = text.slice(0, a + EMBED_BEGIN.length) +
+        '\n  var POSTS = ' + json + ';\n  ' + text.slice(b);
+      if (next === text) return null;
+      state.shaMap[DATA_JS_PATH] = res.sha;
+      return putFile(DATA_JS_PATH, utf8ToBase64(next), 'admin: sync embedded posts (' + posts.length + ')');
+    }).catch(function () { return null; });
+  }
+
+  function readTextFile(path) {
+    return gh(contentsUrl(path) + '?ref=' + encodeURIComponent(state.cfg.branch))
+      .then(function (data) {
+        if (Array.isArray(data) || !data || !data.content) throw new Error('无法读取 ' + path);
+        return { text: base64ToUtf8(data.content), sha: data.sha };
+      });
+  }
+
   /* ---------------- Markdown 风格正文 ↔ sections ---------------- */
   function safeInlineUrl(u) {
     return /^(https?:\/\/|mailto:|#|\/|\.\/|\.\.\/|data:image\/)/i.test(String(u || '')) ? u : '#';
@@ -845,13 +873,14 @@
 
     setBusy($('#saveBtn'), true, '正在提交…');
     putPosts(next, msg)
+      .then(function () { return syncEmbeddedPosts(next); })
       .then(function () {
         state.posts = next;
         state.dirty = false;
         $('#editor').hidden = true;
         state.index = -1;
         renderList();
-        toast('已保存到 GitHub，稍等片刻主站即可生效', 'ok');
+        toast('已保存并同步首屏，刷新主站即可秒开新文章', 'ok');
       })
       .catch(function (err) {
         toast('保存失败：' + err.message, 'bad');
@@ -867,6 +896,7 @@
     var next = state.posts.filter(function (_, i) { return i !== index; });
     setBusy($('#deleteBtn'), true, '正在删除…');
     putPosts(next, 'admin: delete ' + p.slug)
+      .then(function () { return syncEmbeddedPosts(next); })
       .then(function () {
         state.posts = next;
         if (state.index === index) $('#editor').hidden = true;
