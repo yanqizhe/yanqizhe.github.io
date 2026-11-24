@@ -130,6 +130,40 @@
           <div id="siteState" class="site-state" role="status">尚未加载站点设置</div>
         </section>
 
+        <section class="admin-card feature-card" aria-labelledby="featureTitle">
+          <h2 id="featureTitle">功能与开发者设置</h2>
+          <p class="muted small">主站的全部功能都在这里。带开关的会写进 <code>content/settings.json</code>，保存后立即生效；需要账号的功能（评论、统计）填好参数才算接通。</p>
+          <div id="featureList" class="feature-list"></div>
+
+          <details class="repo-settings">
+            <summary>评论参数 · Giscus</summary>
+            <label class="field-label">仓库（owner/repo）<input id="gRepo" class="input" type="text" spellcheck="false" placeholder="yanqizhe/yanqizhe.github.io"></label>
+            <label class="field-label">repo-id<input id="gRepoId" class="input" type="text" spellcheck="false" placeholder="R_kgDO..."></label>
+            <label class="field-label">Discussion 分类名<input id="gCategory" class="input" type="text" spellcheck="false" placeholder="General"></label>
+            <label class="field-label">category-id<input id="gCategoryId" class="input" type="text" spellcheck="false" placeholder="DIC_kwDO..."></label>
+            <p class="muted tiny">去 <a href="https://giscus.app/zh-CN" target="_blank" rel="noopener">giscus.app</a> 选仓库与分类，页面给出的四项照抄即可。仓库需装 Giscus app 并开启 Discussions。</p>
+          </details>
+
+          <details class="repo-settings">
+            <summary>访问统计参数</summary>
+            <label class="field-label">服务
+              <select id="aProvider" class="input">
+                <option value="busuanzi">不蒜子 · 免注册</option>
+                <option value="cloudflare">Cloudflare Web Analytics · 需 token</option>
+                <option value="none">关闭</option>
+              </select>
+            </label>
+            <label class="field-label">Cloudflare token<input id="aToken" class="input" type="text" spellcheck="false" placeholder="仅选 Cloudflare 时填写"></label>
+            <p class="muted tiny">不蒜子由第三方脚本统计，可能偶尔不可用；统计脚本都在页面空闲后才加载，不影响首屏。</p>
+          </details>
+
+          <div class="btn-row">
+            <button id="saveFeaturesBtn" class="btn btn-primary" type="button">保存功能设置并发布</button>
+            <button id="exportBtn" class="btn btn-mini" type="button">导出全站备份</button>
+          </div>
+          <div id="featureState" class="site-state" role="status">尚未加载功能设置</div>
+        </section>
+
         <section class="admin-card guide-card" aria-labelledby="guideTitle">
           <h2 id="guideTitle">首次使用</h2>
           <ol class="guide-list">
@@ -179,9 +213,18 @@
               </select>
             </label>
             <label class="field-label">发布日期 <input id="fDate" class="input" type="date"></label>
+            <label class="field-label">发布状态
+              <select id="fStatus" class="input">
+                <option value="published">立即发布</option>
+                <option value="draft">草稿 · 不进主站</option>
+                <option value="scheduled">定时发布</option>
+              </select>
+            </label>
+            <label class="field-label">定时上线时间 <input id="fPublishAt" class="input" type="datetime-local"></label>
             <label class="field-label">阅读分钟 <input id="fMinutes" class="input" type="number" min="1" max="120" value="6"></label>
             <label class="field-label">标签 <input id="fTags" class="input" type="text" placeholder="前端, 性能, 笔记"></label>
             <label class="field-label full">封面关键词 <input id="fCover" class="input" type="text" placeholder="例如：SSG / REBUILD、METRICS、GIT"></label>
+            <label class="field-label full">脚注（每行一条，正文用 <code>[^1]</code> 引用）<textarea id="fFootnotes" class="input" rows="2" placeholder="人教版必修一 P32"></textarea></label>
           </div>
 
           <div class="upload-bar" aria-label="插入媒体">
@@ -206,7 +249,9 @@
               <textarea id="fBody" class="input body-input" spellcheck="false" placeholder="## 小标题&#10;&#10;正文段落，支持 **加粗**、`行内代码`、[链接](https://example.com)。&#10;&#10;- 列表项&#10;- [x] 已完成任务&#10;&#10;> 引用&#10;&#10;```&#10;代码&#10;```&#10;&#10;| 列 A | 列 B |&#10;| --- | --- |&#10;| 内容 | 内容 |&#10;&#10;::: 提示 | 自定义提示框"></textarea>
               <div class="syntax-help">
                 <strong>写作语法</strong>
-                <code>## 标题</code> 分节 · <code>- 项目</code> 列表 · <code>&gt; 引用</code> · <code>```</code> 代码块 · <code>| 表格 |</code> · <code>::: 提示 | 内容</code><br>
+                <code>## 标题</code> 分节 · <code>- 项目</code> 列表 · <code>&gt; 引用</code> · <code>```</code> 代码块 · <code>| 表格 |</code><br>
+                <code>::: 提示 | 内容</code> 提示框（标签写「注意 / 警告 / 小结」会自动换颜色）· <code>[^1]</code> 脚注（脚注内容填上方输入框）<br>
+                <code>$a^2+b^2=c^2$</code> 行内公式 · <code>$$...$$</code> 独占一行公式 · <code>[[文章slug或标题]]</code> 站内双链<br>
                 媒体：<code>![说明](图片地址)</code> · <code>@video[说明](视频地址)</code> · <code>[下载文件](文件地址)</code>（也可用上方按钮自动插入）
               </div>
             </div>
@@ -224,6 +269,7 @@
             <div class="action-buttons">
               <button id="deleteBtn" class="btn btn-danger-ghost" type="button" hidden>删除文章</button>
               <button id="cancelBtn" class="btn btn-ghost" type="button">取消</button>
+              <button id="previewBtn" class="btn btn-ghost" type="button">预览草稿</button>
               <button id="saveBtn" class="btn btn-primary" type="button">保存到 GitHub</button>
             </div>
           </div>

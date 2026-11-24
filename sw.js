@@ -1,6 +1,6 @@
 /* 样品站 Service Worker：仅在 http(s) 部署时由页面注册，file:// 预览不生效
    策略：本地资源 stale-while-revalidate；导航请求离线回退首页 */
-const CACHE = 'rb-sample-v7';
+const CACHE = 'rb-sample-v8';
 const CORE = [
   './', './index.html', './404.html',
   './assets/style.css', './assets/data.js', './assets/app.js', './assets/icon.svg',
@@ -31,6 +31,20 @@ self.addEventListener('fetch', event => {
       url.pathname.indexOf('/content/posts.json') !== -1 ||
       url.pathname.indexOf('/content/settings.json') !== -1 ||
       url.pathname.indexOf('/assets/uploads/') !== -1) return;
+
+  /* 页面 HTML：网络优先，保证评论容器 / 新结构立刻生效；离线回退缓存 */
+  if (req.mode === 'navigate' || /\.html$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(req).then(res => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy));
+        }
+        return res;
+      }).catch(() => caches.match(req).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
 
   /* 脚本、样式、内嵌数据：网络优先，保证升级和新文章立即生效；离线回退缓存 */
   if (url.pathname.indexOf('/assets/app.js') !== -1 ||

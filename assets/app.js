@@ -95,6 +95,7 @@
     if (mt) mt.textContent = schemeLabels[v] || '自动';
     var btn = $('#themeBtn');
     if (btn) btn.title = '主题：' + (schemeLabels[v] || '自动') + '（点击切换）';
+    syncGiscusTheme();
   }
   function cycleScheme() {
     var order = ['auto', 'light', 'dark'];
@@ -422,9 +423,12 @@
       '<section class="article-lastmod inline-meta">' + icon('edit', 'icon-sm') + '<span>最后更新于 ' + p.lastmod + '（样品值）</span></section>' +
       '<section class="article-source inline-meta">' + icon('file', 'icon-sm') + '<span>正式站由 Hugo 生成 Markdown 源文件；本样品由数据层渲染。</span></section>' +
       '<div class="article-actions" id="articleActions"></div>' +
-      '</footer></article>';
+      '</footer><aside class="backlinks" id="backlinks" hidden></aside></article>';
     $('#postContainer') && ($('#postContainer').innerHTML = html);
     renderIcons($('#postContainer'));
+    renderMath($('.article-content'));
+    renderBacklinks(p);
+    renderComments();
 
     /* 相关文章：同标签优先 */
     var scored = POSTS.map(function (o, i) {
@@ -452,6 +456,169 @@
     bindTocHighlight();
     maybeResume(p);
   }
+  /* ---------------- 公式渲染（KaTeX，按需加载） ----------------
+     只有正文里真的出现 $...$ / $$...$$ 时才去取 KaTeX，普通文章零额外请求。 */
+  var KATEX_BASE = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/';
+  var MATH_RE = /\$\$[\s\S]+?\$\$|\$[^$\n]{1,200}?\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/;
+  var katexState = '', katexQueue = [];
+  function loadKatex(cb) {
+    if (window.katex) { cb(true); return; }
+    if (katexState === 'done') { cb(true); return; }
+    if (katexState === 'failed') { cb(false); return; }
+    katexQueue.push(cb);
+    if (katexState === 'loading') return;
+    katexState = 'loading';
+    var flush = function (ok) {
+      katexState = ok ? 'done' : 'failed';
+      var q = katexQueue; katexQueue = [];
+      q.forEach(function (fn) { try { fn(ok); } catch (e) {} });
+    };
+    var css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = KATEX_BASE + 'katex.min.css';
+    document.head.appendChild(css);
+    var s = document.createElement('script');
+    s.src = KATEX_BASE + 'katex.min.js';
+    s.async = true;
+    s.onload = function () { flush(true); };
+    s.onerror = function () { flush(false); };
+    document.head.appendChild(s);
+  }
+  function renderMath(scope) {
+    var f = (SITE.features || {});
+    if (f.math === false) return;
+    var root = scope || $('.article-content');
+    if (!root || !MATH_RE.test(root.textContent || '')) return;
+    loadKatex(function (ok) {
+      if (!ok || !window.katex) return;
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode: function (n) {
+          var p = n.parentNode;
+          if (!p) return NodeFilter.FILTER_REJECT;
+          var tag = String(p.nodeName || '').toLowerCase();
+          if (tag === 'code' || tag === 'pre' || tag === 'script' || tag === 'style') return NodeFilter.FILTER_REJECT;
+          if (p.closest && p.closest('.katex')) return NodeFilter.FILTER_REJECT;
+          return MATH_RE.test(n.nodeValue || '') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes = [], n;
+      while ((n = walker.nextNode())) nodes.push(n);
+      nodes.forEach(function (node) {
+        var text = node.nodeValue, last = 0, m, frag = document.createDocumentFragment();
+        var re = /\$\$([\s\S]+?)\$\$|\$([^$\n]{1,200}?)\$|\\\(([\s\S]+?)\\\)|\\\[([\s\S]+?)\\\]/g;
+        while ((m = re.exec(text)) !== null) {
+          if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          var expr = m[1] != null ? m[1] : m[2] != null ? m[2] : m[3] != null ? m[3] : m[4];
+          var display = m[1] != null || m[4] != null;
+          try {
+            var holder = document.createElement('span');
+            holder.innerHTML = window.katex.renderToString(expr, { displayMode: display, throwOnError: false, strict: false });
+            while (holder.firstChild) frag.appendChild(holder.firstChild);
+          } catch (e) {
+            frag.appendChild(document.createTextNode(m[0]));
+          }
+          last = re.lastIndex;
+        }
+        if (!last) return;
+        if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        if (node.parentNode) node.parentNode.replaceChild(frag, node);
+      });
+    });
+  }
+
+  /* ---------------- 反向链接：谁引用了这篇 ---------------- */
+  function renderBacklinks(p) {
+    var box = $('#backlinks');
+    if (!box || !p) return;
+    var f = SITE.features || {};
+    if (f.backlinks === false) { box.remove(); return; }
+    var keys = [String(p.slug).toLowerCase(), String(p.title).toLowerCase()];
+    var hits = POSTS.filter(function (o) {
+      if (o.slug === p.slug) return false;
+      var t = String(o.text || '');
+      return keys.some(function (k) {
+        return t.indexOf('[[' + k + ']]') >= 0 || t.indexOf('[[' + k + '|') >= 0;
+      });
+    });
+    if (!hits.length) { box.remove(); return; }
+    box.hidden = false;
+    box.innerHTML = '<h2>' + icon('link', 'icon-sm') + '<span>这些文章引用了本篇</span></h2><ul>' +
+      hits.map(function (o) {
+        return '<li><a href="' + postUrl(o) + '">' + esc(o.title) + '</a>' +
+          '<small>' + esc(o.date) + '</small></li>';
+      }).join('') + '</ul>';
+  }
+
+  /* ---------------- 评论：Giscus（GitHub Discussions，无后端） ---------------- */
+  function currentSchemeName() {
+    return document.documentElement.getAttribute('data-scheme') === 'dark' ? 'dark' : 'light';
+  }
+  function renderComments() {
+    var mount = $('#commentMount');
+    if (!mount) return;
+    var f = SITE.features || {}, g = SITE.giscus || {};
+    if (f.comments === false) { mount.innerHTML = ''; return; }
+    if (!g.repo || !g.repoId) {
+      mount.innerHTML = '<div class="comment-hint">' + icon('info', 'icon-sm') +
+        '<div><strong>评论还没接上</strong><p>在 <a href="admin/index.html" target="_blank" rel="noopener">后台 · 功能与开发者设置</a> ' +
+        '里填 Giscus 的仓库名与 repo-id，读者用 GitHub 账号即可评论；没填之前这里不加载任何外部脚本。</p></div></div>';
+      return;
+    }
+    if ($('#giscusScript')) return;
+    var s = document.createElement('script');
+    s.id = 'giscusScript';
+    s.src = 'https://giscus.app/client.js';
+    s.async = true;
+    s.crossOrigin = 'anonymous';
+    var attrs = {
+      'data-repo': g.repo,
+      'data-repo-id': g.repoId,
+      'data-category': g.category || 'General',
+      'data-category-id': g.categoryId || '',
+      'data-mapping': g.mapping || 'pathname',
+      'data-strict': '0',
+      'data-reactions-enabled': '1',
+      'data-emit-metadata': '0',
+      'data-input-position': 'top',
+      'data-theme': currentSchemeName(),
+      'data-lang': 'zh-CN',
+      'data-loading': 'lazy'
+    };
+    Object.keys(attrs).forEach(function (k) { if (attrs[k] !== '') s.setAttribute(k, attrs[k]); });
+    mount.innerHTML = '';
+    mount.appendChild(s);
+  }
+  function syncGiscusTheme() {
+    var frame = document.querySelector('iframe.giscus-frame');
+    if (!frame || !frame.contentWindow) return;
+    try {
+      frame.contentWindow.postMessage({
+        giscus: { setConfig: { theme: currentSchemeName() } }
+      }, 'https://giscus.app');
+    } catch (e) {}
+  }
+
+  /* ---------------- 访问统计：不蒜子 / Cloudflare（页面空闲后再加载） ---------------- */
+  function renderAnalytics() {
+    var f = SITE.features || {}, a = SITE.analytics || {};
+    if (f.analytics === false || !a.provider || a.provider === 'none') return;
+    var run = function () {
+      if ($('#analyticsScript')) return;
+      var s = document.createElement('script');
+      s.id = 'analyticsScript';
+      s.async = true;
+      if (a.provider === 'busuanzi') {
+        s.src = 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js';
+      } else if (a.provider === 'cloudflare' && a.token) {
+        s.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+        s.setAttribute('data-cf-beacon', JSON.stringify({ token: a.token }));
+      } else return;
+      document.head.appendChild(s);
+    };
+    if (window.requestIdleCallback) requestIdleCallback(run, { timeout: 3000 });
+    else setTimeout(run, 1600);
+  }
+
   function bindTocHighlight() {
     var links = $$('#widgetToc a, .toc-nav a');
     if (!links.length) return;
@@ -596,6 +763,11 @@
     var tags = Object.keys(window.__TAGCOUNT || {}).length;
     var last = POSTS.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
     var avg = POSTS.length ? Math.round(words / POSTS.length) : 0;
+    var a = SITE.analytics || {}, feat = SITE.features || {};
+    var live = (feat.analytics !== false && a.provider === 'busuanzi')
+      ? '<div class="stat-live"><span>浏览 <strong id="busuanzi_value_site_pv">–</strong></span>' +
+        '<span>访客 <strong id="busuanzi_value_site_uv">–</strong></span></div>'
+      : '';
     box.innerHTML = '<div class="widget-icon">' + icon('chart') + '</div>' +
       '<h2 class="widget-title section-title">站点统计</h2>' +
       '<div class="stat-grid">' +
@@ -603,7 +775,7 @@
       '<div class="stat-cell"><strong>' + tags + '</strong><span>标签</span></div>' +
       '<div class="stat-cell"><strong>' + (words >= 10000 ? (words / 10000).toFixed(1) + '万' : words) + '</strong><span>总字数</span></div>' +
       '<div class="stat-cell"><strong>' + avg + '</strong><span>篇均</span></div>' +
-      '</div><p class="stat-foot">最后更新 ' + (last ? last.date : '—') + '</p>';
+      '</div>' + live + '<p class="stat-foot">最后更新 ' + (last ? last.date : '—') + '</p>';
   }
 
   /* 阅读进度记忆 */
@@ -738,12 +910,13 @@
     if (!box) return;
     var groups = Object.create(null);
     POSTS.forEach(function (p) { var y = p.date.slice(0, 4); (groups[y] = groups[y] || []).push(p); });
-    box.innerHTML = Object.keys(groups).sort().reverse().map(function (y) {
-      return '<section class="archives-group" id="' + y + '"><h2>' + y + '<small>' + groups[y].length + ' 篇</small></h2>' +
+    box.innerHTML = Object.keys(groups).sort().reverse().map(function (y, gi) {
+      return '<details class="archives-group" id="' + y + '"' + (gi === 0 ? ' open' : '') + '>' +
+        '<summary><h2>' + y + '<small>' + groups[y].length + ' 篇</small></h2></summary>' +
         '<ul class="archives-list">' + groups[y].map(function (p) {
           return '<li><time datetime="' + p.date + '">' + p.date.slice(5) + '</time><a href="' + postUrl(p) + '">' + esc(p.title) + '</a>' +
             '<span class="cat-badge cat-' + p.category + '">' + p.category + '</span></li>';
-        }).join('') + '</ul></section>';
+        }).join('') + '</ul></details>';
     }).join('');
   }
 
@@ -761,8 +934,14 @@
   }
   function renderTags() {
     var cloud = $('#tagCloud'), box = $('#tagResults'), head = $('#tagHead');
+    var tagCounts = window.__TAGCOUNT || {};
+    var maxCount = 1;
+    Object.keys(tagCounts).forEach(function (t) { if (tagCounts[t] > maxCount) maxCount = tagCounts[t]; });
     if (cloud) cloud.innerHTML = window.__TAGS.map(function (t) {
-      return '<a href="tags.html?tag=' + encodeURIComponent(t) + '">' + esc(t) + '<small>' + window.__TAGCOUNT[t] + '</small></a>';
+      var n = tagCounts[t] || 1;
+      var size = (1.25 + 0.75 * Math.min(1, (n - 1) / Math.max(1, maxCount - 1))).toFixed(2);
+      return '<a href="tags.html?tag=' + encodeURIComponent(t) + '" style="font-size:' + size + 'rem">' +
+        esc(t) + '<small>' + n + '</small></a>';
     }).join('');
     if (!box) return;
     var tag = params.get('tag') || '';
@@ -812,7 +991,13 @@
     var box = $('#friendsGrid');
     if (!box) return;
     box.innerHTML = D.FRIENDS.map(function (f) {
-      return '<a class="friend-card" href="#"><div class="friend-avatar" style="background:' + f.color + '">' + esc(f.initial) + '</div>' +
+      var host = '';
+      try { host = new URL(String(f.url || '')).hostname; } catch (e) {}
+      var avatar = '<div class="friend-avatar" style="background:' + f.color + '">' + esc(f.initial) +
+        (host ? '<img src="https://favicon.im/' + host + '?larger=true" alt="" loading="lazy" ' +
+          'onerror="this.style.display=\'none\'">' : '') + '</div>';
+      return '<a class="friend-card" href="' + esc(f.url || '#') + '"' +
+        (host ? ' target="_blank" rel="noopener noreferrer"' : '') + '>' + avatar +
         '<h3>' + esc(f.name) + '</h3><p>' + esc(f.desc) + '</p></a>';
     }).join('');
   }
@@ -1201,7 +1386,9 @@
   function postsKey(list) { return (list || []).map(postKey).join('\u0002'); }
   function settingsKey(cfg) {
     cfg = cfg || {};
-    return [cfg.name, cfg.description, cfg.notice, cfg.avatar].join('\u0001');
+    return [cfg.name, cfg.description, cfg.notice, cfg.avatar, cfg.license,
+      JSON.stringify(cfg.features || {}), JSON.stringify(cfg.giscus || {}),
+      JSON.stringify(cfg.analytics || {})].join('\u0001');
   }
 
   /* ---------------- 远程文章（网页后台发布）----------------
@@ -1230,7 +1417,11 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) {
         if (cfg && typeof cfg === 'object' &&
-            settingsKey(cfg) !== settingsKey({ name: SITE.name, description: SITE.description, notice: SITE.notice, avatar: SITE.avatar })) {
+            settingsKey(cfg) !== settingsKey({
+              name: SITE.name, description: SITE.description, notice: SITE.notice,
+              avatar: SITE.avatar, license: SITE.license,
+              features: SITE.features, giscus: SITE.giscus, analytics: SITE.analytics
+            })) {
           D.setSite(cfg);
           finish(true);
         } else finish(false);
@@ -1264,18 +1455,34 @@
     bindQuickSearch();
     bindShortcuts();
     bindToTop();
+    renderAnalytics();
+    if (PAGE === 'about') renderComments();
   }
   function applyRemoteChanges(postsChanged, settingsChanged) {
-    if (settingsChanged) renderChrome();
+    if (settingsChanged) {
+      renderChrome();
+      renderWidgets();
+      if (PAGE === 'post') renderComments();
+    }
     if (postsChanged) {
       renderPage();
       renderWidgets();
       if (PAGE === 'post') enhanceArticle(document);
     }
   }
+  /* 后台「预览」：草稿只写在本机 sessionStorage，这个标签页能看，别人看不到 */
+  function applyPreview() {
+    if (params.get('preview') !== '1' || !D.addPreviewPost) return false;
+    var raw = null;
+    try { raw = JSON.parse(sessionStorage.getItem('rb-preview') || 'null'); } catch (e) {}
+    return raw ? !!D.addPreviewPost(raw) : false;
+  }
   function start() {
+    var previewing = applyPreview();
     rebuildIndex();
     boot();
+    if (previewing) toast('预览模式：这篇草稿只有你自己能打开');
+    if (previewing) return;
     loadRemotePosts(function (postsChanged) {
       loadRemoteSettings(function (settingsChanged) {
         applyRemoteChanges(postsChanged, settingsChanged);

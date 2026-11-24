@@ -109,14 +109,10 @@
     <div class="subsection-list"><div class="article-list--tile" id="relatedList"></div></div>
   </aside>
   <div class="pager" id="pager"></div>
-  <section class="card commentbox">
-    <h3>评论</h3>
-    <p>样品站未接入评论服务，也不发起任何外部请求。正式版本此处挂载 Waline（Vercel + 数据库），并启用 Akismet 反垃圾与 Turnstile 验证。</p>
+  <section class="card commentbox" id="commentBox">
+    <h3 class="comment-title">评论</h3>
+    <div id="commentMount" class="comment-mount"></div>
   </section>
-  <div class="waline-statistic">当前页面浏览量: <span>—</span>，有 <span>—</span> 条评论。（Waline 统计占位，仅供参考）</div>
-  <div id="waline" class="card" style="text-align:center;color:var(--card-text-color-tertiary);font-size:1.3rem;padding:22px">
-    评论容器占位 · Waline
-  </div>
 <footer class="site-footer">
   <section class="copyright" id="footerCopyright">© 2026 重构博客 · Sample</section>
   <section class="powerby"><span id="footerPowerby">样品: static-demo</span><br>

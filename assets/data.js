@@ -19,7 +19,14 @@
     powerby: [
       ['样品', 'static-demo'], ['布局', 'Stack-style'], ['构建', '0-runtime'],
       ['资源', 'local-only'], ['主题', 'auto/light/dark'], ['运行时', '0-dep']
-    ]
+    ],
+    /* 以下由网页后台「功能与开发者设置」写入 content/settings.json */
+    features: {
+      math: true, comments: true, analytics: true, wikilink: true,
+      footnotes: true, callout: true, backlinks: true, webp: true
+    },
+    giscus: { repo: '', repoId: '', category: 'General', categoryId: '', mapping: 'pathname' },
+    analytics: { provider: 'busuanzi', token: '' }
   };
 
   var MENU = [
@@ -798,6 +805,22 @@
   function isDownloadUrl(u) {
     return /\.(pdf|zip|rar|7z|tar|gz|mp4|webm|mov|m4v|txt|md|docx?|xlsx?|pptx?|csv|json|apk|exe|dmg)$/i.test(String(u || ''));
   }
+  /* 双链索引：slug / 标题 → slug。文章还在依次 hydrate 时也能解析到后面的文章 */
+  var REF = Object.create(null);
+  function buildRef(list) {
+    REF = Object.create(null);
+    (list || []).forEach(function (p) {
+      if (!p) return;
+      if (p.slug) REF[p.slug] = p.slug;
+      if (p.title) REF[p.title] = p.slug;
+    });
+  }
+  function wikiLink(key, label) {
+    var slug = REF[String(key || '').trim()];
+    if (!slug) return '<kbd>' + key + (label ? '|' + label : '') + '</kbd>';
+    return '<a class="wikilink" href="post.html?slug=' + encodeURIComponent(slug) + '">' +
+      (label || key) + '</a>';
+  }
   function inline(s) {
     return esc(s)
       .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, function (m, alt, url) {
@@ -817,7 +840,10 @@
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/~~([^~]+)~~/g, '<del>$1</del>')
-      .replace(/\[\[([^\]]+)\]\]/g, '<kbd>$1</kbd>');
+      .replace(/\[\^(\d+)\]/g, '<sup class="fn-ref"><a href="#fn-$1" id="fnref-$1">$1</a></sup>')
+      .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, function (m, key, label) {
+        return wikiLink(key, label);
+      });
   }
 
   /* 极简语法着色：按词法分组一次性扫描，不引入 highlight.js / Prism */
@@ -856,6 +882,14 @@
       '</div><pre><code>' + body + '</code></pre></div>';
   }
 
+  function calloutType(label) {
+    var s = String(label || '').toLowerCase();
+    if (/warn|warning|注意|警告|风险|坑|danger/.test(s)) return 'warn';
+    if (/tip|技巧|建议|提示|实践|经验/.test(s)) return 'tip';
+    if (/ok|success|结论|小结|要点|完成/.test(s)) return 'ok';
+    return 'info';
+  }
+
   function buildBody(post) {
     var html = [], toc = [], n = 0;
     post.sections.forEach(function (sec) {
@@ -879,8 +913,24 @@
         html.push('<div class="table-wrap"><table><thead><tr>' + sec.table.head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' +
           sec.table.rows.map(function (r) { return '<tr>' + r.map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>');
       }
-      if (sec.note) html.push('<aside class="note-card"><span class="note-label">' + esc(sec.note[0]) + '</span><p>' + inline(sec.note[1]) + '</p></aside>');
+      var cal = sec.callout;
+      if (!cal && sec.note && sec.note.length >= 2) cal = { title: sec.note[0], text: sec.note[1] };
+      if (cal && cal.text) {
+        var ct = calloutType(cal.type || cal.title);
+        var paras = String(cal.text).split('\n').filter(function (x) { return x.trim(); });
+        html.push('<aside class="callout callout-' + ct + '">' +
+          (cal.title ? '<div class="callout-head">' + esc(cal.title) + '</div>' : '') +
+          paras.map(function (t) { return '<p>' + inline(t) + '</p>'; }).join('') +
+          '</aside>');
+      }
     });
+    if (post.footnotes && post.footnotes.length) {
+      html.push('<section class="post-footnotes"><h2 class="footnotes-title">参考与注释</h2><ol>' +
+        post.footnotes.map(function (f, i) {
+          return '<li id="fn-' + (i + 1) + '">' + inline(f) +
+            ' <a class="fn-back" href="#fnref-' + (i + 1) + '" aria-label="回到正文">\u21a9</a></li>';
+        }).join('') + '</ol></section>');
+    }
     return { html: html.join('\n'), toc: toc };
   }
 
@@ -1015,14 +1065,31 @@
     return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
   }
 
+  /* 发布状态：草稿 / 定时 / 已发布。草稿和未到点的定时稿不进主站列表。 */
+  function publishState(p) {
+    if (p && (p.draft === true || p.draft === 'true')) return 'draft';
+    var at = p && p.publishAt ? Date.parse(p.publishAt) : 0;
+    if (at && at > Date.now()) return 'scheduled';
+    return 'published';
+  }
+  function pruneUnpublished() {
+    for (var i = POSTS.length - 1; i >= 0; i--) {
+      if (POSTS[i].status !== 'published') POSTS.splice(i, 1);
+    }
+  }
+
   /* 把一篇「源文章」补全为可渲染文章；后台新增/编辑的文章同样走这里 */
   function hydrate(p) {
+    if (!Array.isArray(p.tags)) p.tags = [];
+    if (!Array.isArray(p.sections) || !p.sections.length) p.sections = [{ h: '正文', p: [''] }];
     var b = buildBody(p);
     p.body = b.html;
     p.toc = b.toc;
     p.coverImage = makeCover(p);
     p.lastmod = p.lastmod || p.date;
     p.excerpt = p.subtitle;
+    p.status = publishState(p);
+    p.publishAt = p.publishAt || '';
     var t = (p.tags || []).join(' ');
     if (/性能|指标|浏览器|CSS|调试/.test(t)) p.series = '前端性能工程笔记';
     else if (/Hugo|构建|工具链|静态站|部署|Cloudflare|Serverless/.test(t)) p.series = '静态站构建手记';
@@ -1031,35 +1098,58 @@
     p.words = (p.sections || []).reduce(function (acc, s) {
       return acc + [s.h, (s.p || []).join(''), (s.list || []).join(''), s.quote || '', s.code || '']
         .join('').replace(/[\s*`#\[\]]/g, '').length;
-    }, 0);
+    }, 0) + (p.footnotes || []).join('').length;
     p.text = [p.title, p.subtitle, p.tags.join(' '), p.category, p.cover, p.sections.map(function (s) {
       return s.h + ' ' + (s.p || []).join(' ') + ' ' + (s.list || []).join(' ') + ' ' +
         (s.quote || '') + ' ' + (s.code || '') + ' ' + (s.note ? s.note.join(' ') : '') + ' ' +
+        (s.callout ? [s.callout.title, s.callout.text].join(' ') : '') + ' ' +
         (s.table ? s.table.rows.map(function (r) { return r.join(' '); }).join(' ') : '');
-    }).join(' ')].join(' ').toLowerCase();
+    }).join(' ') + ' ' + (p.footnotes || []).join(' ')].join(' ').toLowerCase();
     return p;
   }
   function sortPosts() {
     POSTS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
   }
+  buildRef(POSTS);
   POSTS.forEach(hydrate);
+  pruneUnpublished();
   sortPosts();
   /* 网页后台保存后，主站用远程源数据整体替换（数组保持同一引用，app.js 无需重新取） */
   function setPosts(rawList) {
     POSTS.length = 0;
+    buildRef(rawList);
     (rawList || []).forEach(function (raw) {
       try { POSTS.push(hydrate(raw)); } catch (e) {}
     });
+    pruneUnpublished();
     sortPosts();
     return POSTS;
+  }
+  /* 后台「预览」：把本机草稿临时插到列表最前面，只在这个标签页可见 */
+  function addPreviewPost(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var copy = JSON.parse(JSON.stringify(raw));
+    copy.draft = false;
+    copy.publishAt = '';
+    var p = hydrate(copy);
+    p.status = 'preview';
+    POSTS.unshift(p);
+    if (!REF[p.slug]) REF[p.slug] = p.slug;
+    if (p.title) REF[p.title] = p.slug;
+    return p;
   }
   POSTS.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; });
 
   /* 网页后台「站点设置」保存后，主站用远程配置覆盖占位站点信息 */
   function setSite(patch) {
     if (!patch || typeof patch !== 'object') return SITE;
-    ['name', 'description', 'notice', 'avatar'].forEach(function (key) {
+    ['name', 'description', 'notice', 'avatar', 'license'].forEach(function (key) {
       if (typeof patch[key] === 'string') SITE[key] = patch[key];
+    });
+    ['features', 'giscus', 'analytics'].forEach(function (key) {
+      if (patch[key] && typeof patch[key] === 'object' && !Array.isArray(patch[key])) {
+        SITE[key] = Object.assign({}, SITE[key] || {}, patch[key]);
+      }
     });
     return SITE;
   }
@@ -1067,7 +1157,7 @@
   global.BLOG_DATA = {
     SITE: SITE, MENU: MENU, SOCIAL: SOCIAL, CATEGORIES: CATEGORIES,
     STACK: STACK, FRIENDS: FRIENDS, POSTS: POSTS,
-    setPosts: setPosts, setSite: setSite,
+    setPosts: setPosts, setSite: setSite, addPreviewPost: addPreviewPost,
     pagefindPlaceholder: 'Pagefind 在正式站由构建期生成索引；本样品使用运行时倒排索引。'
   };
 })(window);

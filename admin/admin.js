@@ -340,7 +340,18 @@
   }
 
   function defaultSettings() {
-    return { name: '重构博客', description: '静态站爱好者 · 写点技术与工程笔记', notice: '', avatar: '' };
+    return {
+      name: '重构博客',
+      description: '静态站爱好者 · 写点技术与工程笔记',
+      notice: '',
+      avatar: '',
+      features: {
+        math: true, comments: true, analytics: true, wikilink: true,
+        footnotes: true, callout: true, backlinks: true, webp: true
+      },
+      giscus: { repo: '', repoId: '', category: 'General', categoryId: '', mapping: 'pathname' },
+      analytics: { provider: 'busuanzi', token: '' }
+    };
   }
 
   function fillSettingsForm() {
@@ -363,6 +374,144 @@
       $('#resetAvatarBtn').hidden = true;
     }
     $('#siteState').textContent = state.settings ? '站点设置已加载' : '尚未加载站点设置';
+    renderFeatureList();
+    fillConfigInputs();
+  }
+
+  /* ---------------- 功能清单：既是开关面板，也是「所有功能介绍」 ---------------- */
+  var FEATURE_GROUPS = [
+    {
+      title: '阅读与排版',
+      items: [
+        { fixed: true, name: '倒排索引搜索 + Ctrl K', desc: '运行时建索引，中文按 bigram 切分；Ctrl K 随时唤起。索引在首屏渲染后构建，不阻塞打开速度。' },
+        { fixed: true, name: '三态配色与正文字号', desc: '自动 / 浅色 / 深色跟随系统；文章页可调小中大字号，选择记忆在本机。' },
+        { fixed: true, name: '目录跟随与段落锚点', desc: '右栏目录随滚动高亮；标题旁的 # 是锚点，可复制某一段的直达链接。' },
+        { fixed: true, name: '代码高亮与一键复制', desc: '自写词法着色，零第三方库；代码块右上角可直接复制全文。' },
+        { fixed: true, name: '图片灯箱与懒加载', desc: '正文图片点击放大；滚动到附近才加载，省流量。' },
+        { fixed: true, name: '朗读正文', desc: '调用系统语音合成，纯本地完成，不上传正文。' }
+      ]
+    },
+    {
+      title: '内容表达',
+      items: [
+        { id: 'math', name: '数学公式 KaTeX', desc: '正文写 $a^2+b^2=c^2$ 或 $$...$$ 即可排版。只有出现公式的文章才联网取 KaTeX，普通文章零额外请求。' },
+        { id: 'callout', name: '提示块', desc: '语法「::: 标签 | 内容」，标签写「注意 / 警告 / 小结」会自动换颜色，适合放易错点与结论。' },
+        { id: 'footnotes', name: '脚注', desc: '正文用 [^1] 标记，脚注内容写在编辑器「脚注」框，文末自动编号并能点回原文。' },
+        { id: 'wikilink', name: '站内双链 [[...]]', desc: '写 [[某篇的 slug 或标题]] 直接跳到那篇；可写成 [[slug|显示文字]]。' },
+        { id: 'backlinks', name: '反向链接', desc: '自动列出「哪些文章引用了本篇」，复习时能顺着标签与引用关系走。' },
+        { fixed: true, name: '封面自动生成', desc: '按标题与标签生成 11 种 SVG 插画封面，不用自己配图。' }
+      ]
+    },
+    {
+      title: '互动与统计',
+      items: [
+        { id: 'comments', name: '评论（Giscus）', desc: '读者用 GitHub 账号评论，数据存在仓库 Discussions，不需要服务器和数据库。填好下方参数才算接通。', need: 'giscus' },
+        { id: 'analytics', name: '访问统计', desc: '不蒜子或 Cloudflare Web Analytics，显示站点浏览量 / 访客数；脚本在页面空闲后加载，不影响首屏。', need: 'analytics' },
+        { fixed: true, name: '点赞 / 收藏 / 继续阅读', desc: '只存本机 localStorage，不上传；首页会提示上次读到哪一篇。' },
+        { fixed: true, name: '分享与留言板', desc: '复制链接、系统分享；「关于」页底部是留言板，复用同一套评论。' }
+      ]
+    },
+    {
+      title: '写作与发布',
+      items: [
+        { id: 'webp', name: '上传图片自动压 WebP', desc: '超过 1600px 或 400KB 的图片先在浏览器里压成 WebP 再上传，手机照片不会拖慢页面。' },
+        { fixed: true, name: '草稿箱', desc: '状态选「草稿」的文章只留在 posts.json 里，主站列表与搜索都不会出现。' },
+        { fixed: true, name: '定时发布', desc: '填一个未来时间，到点前主站自动过滤、到点后自动出现，纯前端判断，不需要额外服务。' },
+        { fixed: true, name: '草稿预览', desc: '点「预览草稿」用本机临时数据打开正式文章页，链接发给别人也打不开。' },
+        { fixed: true, name: '导出全站备份', desc: '把 posts.json 与 settings.json 打包成一个 JSON 下载，换电脑或出事时能还原。' },
+        { fixed: true, name: '首屏内嵌 + 自动同步', desc: '保存文章时同时改写 data.js 的内嵌数组，新文章刷新即出，不再等网络。' }
+      ]
+    },
+    {
+      title: '自动化',
+      items: [
+        { fixed: true, name: 'RSS / sitemap 自动重建', desc: '仓库里的 GitHub Actions 在提交文章后自动跑脚本，重新生成 feed.xml 与 sitemap.xml。' },
+        { fixed: true, name: 'Service Worker 分级缓存', desc: 'HTML 走网络优先保证最新，静态资源走缓存优先保证快；版本号一变自动换新。' }
+      ]
+    }
+  ];
+
+  function settingsOf() { return state.settings || defaultSettings(); }
+  function featureEnabled(id) {
+    var f = settingsOf().features || {};
+    return f[id] !== false;
+  }
+  function renderFeatureList() {
+    var box = $('#featureList');
+    if (!box) return;
+    var s = settingsOf();
+    box.innerHTML = FEATURE_GROUPS.map(function (g) {
+      return '<div class="feature-group"><h3>' + esc(g.title) + '</h3>' + g.items.map(function (it) {
+        var right = it.id
+          ? '<span class="switch"><input type="checkbox" data-feature="' + it.id + '"' +
+            (featureEnabled(it.id) ? ' checked' : '') + ' aria-label="' + esc(it.name) + '"><i></i></span>'
+          : '<span class="pill on">常开</span>';
+        var extra = '';
+        if (it.need === 'giscus') extra = (s.giscus && s.giscus.repoId) ? ' · 参数已填' : ' · 参数未填，主站会显示提示';
+        if (it.need === 'analytics') extra = (s.analytics && s.analytics.provider && s.analytics.provider !== 'none')
+          ? ' · 当前使用 ' + s.analytics.provider : ' · 当前关闭';
+        return '<div class="feature-row"><span class="feature-main"><strong>' + esc(it.name) +
+          '</strong><small>' + esc(it.desc + extra) + '</small></span>' + right + '</div>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  function fillConfigInputs() {
+    var s = settingsOf(), g = s.giscus || {}, a = s.analytics || {};
+    if ($('#gRepo')) $('#gRepo').value = g.repo || '';
+    if ($('#gRepoId')) $('#gRepoId').value = g.repoId || '';
+    if ($('#gCategory')) $('#gCategory').value = g.category || 'General';
+    if ($('#gCategoryId')) $('#gCategoryId').value = g.categoryId || '';
+    if ($('#aProvider')) $('#aProvider').value = a.provider || 'none';
+    if ($('#aToken')) $('#aToken').value = a.token || '';
+  }
+  function saveFeatures() {
+    if (!state.token || !state.connected) { toast('请先连接 GitHub', 'bad'); return; }
+    var base = defaultSettings();
+    var next = Object.assign({}, settingsOf());
+    var feats = {};
+    $$('#featureList input[data-feature]').forEach(function (el) {
+      feats[el.getAttribute('data-feature')] = el.checked;
+    });
+    next.features = Object.assign({}, base.features, next.features || {}, feats);
+    next.giscus = Object.assign({}, base.giscus, next.giscus || {}, {
+      repo: $('#gRepo').value.trim(),
+      repoId: $('#gRepoId').value.trim(),
+      category: $('#gCategory').value.trim() || 'General',
+      categoryId: $('#gCategoryId').value.trim(),
+      mapping: 'pathname'
+    });
+    next.analytics = Object.assign({}, base.analytics, next.analytics || {}, {
+      provider: $('#aProvider').value,
+      token: $('#aToken').value.trim()
+    });
+    setBusy($('#saveFeaturesBtn'), true, '保存中…');
+    putFile(SETTINGS_PATH, utf8ToBase64(JSON.stringify(next, null, 2) + '\n'), 'admin: update feature settings')
+      .then(function () {
+        state.settings = next;
+        fillSettingsForm();
+        $('#featureState').textContent = '已发布，主站刷新后生效';
+        toast('功能设置已保存并发布', 'ok');
+      })
+      .catch(function (err) { toast('保存失败：' + err.message, 'bad'); })
+      .then(function () { setBusy($('#saveFeaturesBtn'), false); });
+  }
+  function exportBackup() {
+    var data = {
+      exportedAt: new Date().toISOString(),
+      repo: state.cfg.owner + '/' + state.cfg.repo,
+      settings: settingsOf(),
+      posts: state.posts || []
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'blog-backup-' + today() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast('已导出 ' + (state.posts || []).length + ' 篇文章与站点设置', 'ok');
   }
 
   function fetchSettings(notify) {
@@ -662,6 +811,11 @@
     p.minutes = Math.max(1, Math.min(120, parseInt(p.minutes, 10) || 6));
     p.tags = Array.isArray(p.tags) ? p.tags.map(String).filter(Boolean).slice(0, 12) : splitTags(p.tags);
     p.cover = String(p.cover || '').trim() || p.category;
+    p.draft = p.draft === true || p.draft === 'true';
+    p.publishAt = String(p.publishAt || '');
+    p.footnotes = Array.isArray(p.footnotes)
+      ? p.footnotes.map(function (f) { return String(f).trim(); }).filter(Boolean)
+      : [];
     p.sections = Array.isArray(p.sections) && p.sections.length
       ? p.sections.filter(function (s) { return s && s.h; })
       : [{ h: '正文', p: ['（暂无正文）'] }];
@@ -673,9 +827,11 @@
     if (!p.title) throw new Error('请填写标题');
     if (!p.slug || /\s/.test(p.slug)) throw new Error('URL 标识不能为空或包含空格');
     if (!Array.isArray(p.sections)) throw new Error('正文章节格式不正确');
+    if ($('#fStatus').value === 'scheduled' && !p.publishAt) throw new Error('选了定时发布，请填上线时间');
   }
 
   function gatherFromForm() {
+    var status = $('#fStatus') ? $('#fStatus').value : 'published';
     return normalizePost({
       slug: $('#fSlug').value.trim() || makeSlug($('#fTitle').value),
       title: $('#fTitle').value.trim(),
@@ -685,6 +841,10 @@
       minutes: $('#fMinutes').value,
       tags: splitTags($('#fTags').value),
       cover: $('#fCover').value.trim(),
+      draft: status === 'draft',
+      publishAt: status === 'scheduled' ? ($('#fPublishAt').value || '') : '',
+      footnotes: String($('#fFootnotes').value || '').split('\n')
+        .map(function (x) { return x.trim(); }).filter(Boolean),
       sections: parseMarkdown($('#fBody').value),
       lastmod: today()
     });
@@ -713,6 +873,11 @@
     $('#fMinutes').value = post.minutes || 6;
     $('#fTags').value = (post.tags || []).join(', ');
     $('#fCover').value = post.cover || '';
+    var isDraft = post.draft === true;
+    var scheduled = !isDraft && post.publishAt && Date.parse(post.publishAt) > Date.now();
+    if ($('#fStatus')) $('#fStatus').value = isDraft ? 'draft' : (scheduled ? 'scheduled' : 'published');
+    if ($('#fPublishAt')) $('#fPublishAt').value = post.publishAt ? String(post.publishAt).slice(0, 16) : '';
+    if ($('#fFootnotes')) $('#fFootnotes').value = (post.footnotes || []).join('\n');
     $('#fBody').value = sectionsToMarkdown(post.sections);
     $('#fJson').value = JSON.stringify(post, null, 2);
     $('#fMessage').value = '';
@@ -805,10 +970,19 @@
           }).join('') + '</tbody></table></div>');
       }
       if (s.note && s.note.length >= 2) {
-        html.push('<aside class="note-card"><span class="note-label">' + esc(s.note[0]) +
-          '</span><p>' + inlineHtml(s.note[1]) + '</p></aside>');
+        var ct = /warn|warning|注意|警告|风险|坑/i.test(s.note[0]) ? 'warn'
+          : /tip|技巧|建议|提示|经验/i.test(s.note[0]) ? 'tip'
+          : /ok|success|结论|小结|要点/i.test(s.note[0]) ? 'ok' : 'info';
+        html.push('<aside class="callout callout-' + ct + '"><div class="callout-head">' + esc(s.note[0]) +
+          '</div><p>' + inlineHtml(s.note[1]) + '</p></aside>');
       }
     });
+    if (post.footnotes && post.footnotes.length) {
+      html.push('<section class="post-footnotes"><h2 class="footnotes-title">参考与注释</h2><ol>' +
+        post.footnotes.map(function (f, i) {
+          return '<li id="fn-' + (i + 1) + '">' + inlineHtml(f) + '</li>';
+        }).join('') + '</ol></section>');
+    }
 
     $('#preview').innerHTML = html.join('\n');
   }
@@ -837,9 +1011,11 @@
 
     $('#postList').innerHTML = list.map(function (item) {
       var p = item.p;
+      var st = p.draft === true ? '<span class="badge is-draft">草稿</span>'
+        : (p.publishAt && Date.parse(p.publishAt) > Date.now() ? '<span class="badge is-scheduled">定时</span>' : '');
       return '<article class="admin-post">' +
         '<div class="admin-post-head">' +
-          '<span class="badge">' + esc(p.category) + '</span>' +
+          '<span class="badge">' + esc(p.category) + '</span>' + st +
           '<span>' + esc(p.date) + '</span>' +
           '<span>·</span><span>' + esc(p.minutes || 0) + ' 分钟</span>' +
           '<span class="badge slug">' + esc(p.slug) + '</span>' +
@@ -849,6 +1025,7 @@
         '<p>' + esc(p.subtitle || '（无摘要）') + '</p>' +
         '<div class="post-actions">' +
           '<button class="btn btn-mini" type="button" data-act="edit" data-index="' + item.i + '">编辑</button>' +
+          '<button class="btn btn-mini" type="button" data-act="preview" data-index="' + item.i + '">预览</button>' +
           '<button class="btn btn-mini" type="button" data-act="delete" data-index="' + item.i + '">删除</button>' +
           '<a class="btn btn-mini" href="../post.html?slug=' + encodeURIComponent(p.slug) + '" target="_blank" rel="noopener">查看</a>' +
         '</div>' +
@@ -940,6 +1117,49 @@
     return t.indexOf('video/') === 0 || /\.(mp4|webm|mov|m4v|ogv|mkv)$/.test(n);
   }
 
+  /* 浏览器端图片压缩：超过 400KB 或长边 1600px 的图转 WebP，上传前先瘦身 */
+  function compressImage(file) {
+    var on = settingsOf().features ? settingsOf().features.webp !== false : true;
+    if (!on) return Promise.resolve(null);
+    if (!/^image\//.test(String(file.type || '')) || /svg|gif|avif/i.test(file.type)) return Promise.resolve(null);
+    if (file.size <= 400 * 1024) return Promise.resolve(null);
+    return new Promise(function (resolve) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var max = 1600, w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, max / Math.max(w, h));
+          var cw = Math.round(w * scale), ch = Math.round(h * scale);
+          var c = document.createElement('canvas');
+          c.width = cw;
+          c.height = ch;
+          c.getContext('2d').drawImage(img, 0, 0, cw, ch);
+          c.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            if (!blob || blob.size >= file.size) { resolve(null); return; }
+            var r = new FileReader();
+            r.onload = function () {
+              var s = String(r.result || '');
+              resolve({
+                b64: s.slice(s.indexOf(',') + 1),
+                name: String(file.name).replace(/\.[^.]+$/, '') + '.webp',
+                size: blob.size
+              });
+            };
+            r.onerror = function () { resolve(null); };
+            r.readAsDataURL(blob);
+          }, 'image/webp', 0.82);
+        } catch (e) {
+          URL.revokeObjectURL(url);
+          resolve(null);
+        }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(null); };
+      img.src = url;
+    });
+  }
+
   function uploadAsset(file, kind) {
     if (!state.token || !state.connected) {
       toast('请先连接 GitHub', 'bad');
@@ -954,11 +1174,20 @@
     var d = new Date();
     var yyyy = d.getFullYear();
     var mm = String(d.getMonth() + 1).padStart(2, '0');
-    var path = UPLOAD_DIR + '/' + yyyy + '/' + mm + '/' +
-      Date.now().toString(36) + '-' + safeAssetName(file.name);
-    return fileToBase64(file)
-      .then(function (b64) { return putFile(path, b64, 'admin: upload ' + path); })
-      .then(function () { return '/' + path; });
+    var prefix = UPLOAD_DIR + '/' + yyyy + '/' + mm + '/' + Date.now().toString(36) + '-';
+    return compressImage(file).then(function (opt) {
+      if (opt) {
+        var path = prefix + safeAssetName(opt.name);
+        return putFile(path, opt.b64, 'admin: upload ' + path).then(function () {
+          toast('图片已压缩 ' + Math.round(file.size / 1024) + ' KB → ' + Math.round(opt.size / 1024) + ' KB', 'ok');
+          return '/' + path;
+        });
+      }
+      return fileToBase64(file).then(function (b64) {
+        var path2 = prefix + safeAssetName(file.name);
+        return putFile(path2, b64, 'admin: upload ' + path2).then(function () { return '/' + path2; });
+      });
+    });
   }
 
   function insertAtCursor(text) {
@@ -1016,12 +1245,11 @@
       toast('请先连接 GitHub', 'bad');
       return Promise.reject(new Error('未连接'));
     }
-    var cfg = {
+    var cfg = Object.assign({}, defaultSettings(), state.settings || {}, {
       name: $('#sName').value.trim() || '重构博客',
-      description: $('#sDescription').value.trim(),
-      notice: state.settings && state.settings.notice ? state.settings.notice : '',
-      avatar: state.settings && state.settings.avatar ? state.settings.avatar : ''
-    };
+      description: $('#sDescription').value.trim()
+    });
+    delete cfg.sha;
     setBusy($('#saveSiteBtn'), true, '保存中…');
     return putFile(SETTINGS_PATH, utf8ToBase64(JSON.stringify(cfg, null, 2) + '\n'), 'admin: update site settings')
       .then(function () {
@@ -1179,6 +1407,23 @@
       .then(function () { setBusy($('#changePwdSaveBtn'), false); });
   }
 
+  /* ---------------- 草稿预览 ---------------- */
+  function openPreview(raw) {
+    if (!raw || !raw.slug) { toast('请先填好标题与 URL 标识', 'bad'); return; }
+    try { sessionStorage.setItem('rb-preview', JSON.stringify(raw)); }
+    catch (e) { toast('浏览器禁止本地存储，无法预览', 'bad'); return; }
+    window.open('../post.html?preview=1&slug=' + encodeURIComponent(raw.slug), '_blank');
+  }
+  function previewFromEditor() {
+    var post;
+    try { post = gatherPost(); } catch (e) { toast(e.message, 'bad'); return; }
+    openPreview(post);
+  }
+  function previewSavedPost(index) {
+    var p = state.posts[index];
+    if (p) openPreview(p);
+  }
+
   /* ---------------- 事件绑定 ---------------- */
   function bind() {
     $('#themeBtn').addEventListener('click', function () {
@@ -1228,6 +1473,18 @@
     $('#uploadAvatarBtn').addEventListener('click', handleAvatarUpload);
     $('#resetAvatarBtn').addEventListener('click', resetAvatar);
     $('#saveSiteBtn').addEventListener('click', saveSiteSettings);
+    $('#saveFeaturesBtn').addEventListener('click', saveFeatures);
+    $('#exportBtn').addEventListener('click', exportBackup);
+    $('#previewBtn').addEventListener('click', previewFromEditor);
+    $('#fStatus').addEventListener('change', function () {
+      state.dirty = true;
+      var el = $('#fPublishAt');
+      if (this.value !== 'scheduled' || !el || el.value) return;
+      var d = new Date(Date.now() + 3600 * 1000);
+      var pad = function (n) { return String(n).padStart(2, '0'); };
+      el.value = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    });
 
     $('#insertImageBtn').addEventListener('click', function () { handleMediaUpload('image', '#insertImage'); });
     $('#insertVideoBtn').addEventListener('click', function () { handleMediaUpload('video', '#insertVideo'); });
@@ -1252,6 +1509,7 @@
       if (!btn) return;
       var index = parseInt(btn.getAttribute('data-index'), 10);
       if (btn.getAttribute('data-act') === 'edit') openEditor(index);
+      if (btn.getAttribute('data-act') === 'preview') previewSavedPost(index);
       if (btn.getAttribute('data-act') === 'delete') deletePost(index);
     });
 
@@ -1272,7 +1530,8 @@
       state.autoSlug = false;
       state.dirty = true;
     });
-    ['fSubtitle', 'fCategory', 'fDate', 'fMinutes', 'fTags', 'fCover', 'fBody', 'fJson', 'fMessage']
+    ['fSubtitle', 'fCategory', 'fDate', 'fMinutes', 'fTags', 'fCover', 'fBody', 'fJson', 'fMessage',
+      'fStatus', 'fPublishAt', 'fFootnotes']
       .forEach(function (id) {
         $('#' + id).addEventListener('input', function () { state.dirty = true; });
         $('#' + id).addEventListener('change', function () { state.dirty = true; });

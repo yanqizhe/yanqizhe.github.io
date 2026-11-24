@@ -1049,6 +1049,89 @@ kbd {
 .reading-tools .speak-btn .icon { width: 13px; height: 13px; }
 .reading-tools .speak-btn.is-on { background: var(--accent-color); color: var(--accent-color-text); }
 
+/* ---------- 公式 / 双链 / 提示块 / 脚注 / 反向链接 ---------- */
+.article-content .katex { font-size: 1.05em; }
+.article-content .katex-display { margin: 1.4em 0; overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+
+.wikilink { color: var(--accent-color-darker); border-bottom: 1px dashed var(--accent-color); }
+.wikilink:hover { color: var(--accent-color); border-bottom-style: solid; }
+
+.callout {
+  border-left: 3px solid var(--accent-color); background: var(--accent-soft);
+  border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 0 0 18px;
+}
+.callout-head { font-size: 1.25rem; font-weight: 700; letter-spacing: .02em; margin-bottom: 4px; }
+.callout p { margin: 0 0 6px; font-size: 1.45rem; }
+.callout p:last-child { margin-bottom: 0; }
+.callout-info { border-left-color: #4a7c8c; }
+.callout-info .callout-head { color: #4a7c8c; }
+.callout-tip { border-left-color: #2a9d8f; }
+.callout-tip .callout-head { color: #2a9d8f; }
+.callout-warn { border-left-color: #b87333; }
+.callout-warn .callout-head { color: #b87333; }
+.callout-ok { border-left-color: #5a8f3d; }
+.callout-ok .callout-head { color: #5a8f3d; }
+:root[data-scheme="dark"] .callout-info .callout-head { color: #8fb3bf; }
+:root[data-scheme="dark"] .callout-tip .callout-head { color: #63b8a8; }
+:root[data-scheme="dark"] .callout-warn .callout-head { color: #d09a63; }
+:root[data-scheme="dark"] .callout-ok .callout-head { color: #93b673; }
+
+.post-footnotes { margin-top: 34px; padding-top: 18px; border-top: 1px solid var(--card-separator-color); }
+.footnotes-title { font-size: 1.5rem; margin: 0 0 10px; }
+.post-footnotes ol { margin: 0; padding-left: 22px; }
+.post-footnotes li { font-size: 1.35rem; color: var(--card-text-color-secondary); margin: 6px 0; }
+.fn-ref { font-size: 1.05rem; }
+.fn-ref a { padding: 0 2px; }
+.fn-back { font-size: 1.2rem; opacity: .6; }
+
+.backlinks {
+  margin-top: 26px; padding: 18px 20px; background: var(--card-background);
+  border-radius: var(--card-border-radius); box-shadow: var(--shadow-l1);
+}
+.backlinks h2 { display: flex; align-items: center; gap: 8px; font-size: 1.4rem; margin: 0 0 10px; }
+.backlinks ul { list-style: none; margin: 0; padding: 0; }
+.backlinks li {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 6px 0; border-bottom: 1px dashed var(--card-separator-color); font-size: 1.4rem;
+}
+.backlinks li:last-child { border-bottom: 0; }
+.backlinks small { color: var(--card-text-color-tertiary); font-size: 1.2rem; }
+
+/* ---------- 评论 / 留言板 ---------- */
+.commentbox { padding: 22px 24px; }
+.comment-title { margin: 0 0 14px; font-size: 1.6rem; }
+.comment-mount { min-height: 60px; }
+.comment-hint {
+  display: flex; gap: 10px; padding: 14px 16px; border-radius: 8px;
+  background: var(--accent-soft); color: var(--card-text-color-secondary); font-size: 1.35rem;
+}
+.comment-hint strong { display: block; color: var(--card-text-color-main); margin-bottom: 2px; }
+.comment-hint p { margin: 0; }
+.comment-hint a { text-decoration: underline; }
+
+.stat-live {
+  display: flex; justify-content: center; gap: 16px; margin-top: 8px;
+  font-size: 1.15rem; color: var(--card-text-color-tertiary);
+}
+.stat-live strong { color: var(--card-text-color-secondary); font-variant-numeric: tabular-nums; }
+
+/* ---------- 归档折叠 / 友链头像 ---------- */
+.archives-group > summary { cursor: pointer; list-style: none; }
+.archives-group > summary::-webkit-details-marker { display: none; }
+.archives-group > summary h2 { margin: 0; display: flex; align-items: baseline; }
+.archives-group[open] > summary h2 { margin-bottom: 10px; }
+.archives-group > summary h2::after {
+  content: '+'; margin-left: auto; font-size: 1.7rem; font-weight: 400;
+  color: var(--card-text-color-tertiary);
+}
+.archives-group[open] > summary h2::after { content: '\2212'; }
+
+.friend-avatar { position: relative; overflow: hidden; }
+.friend-avatar img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; border-radius: 50%;
+}
+
 /* ---------- motion / a11y / print ---------- */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
