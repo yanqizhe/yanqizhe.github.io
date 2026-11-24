@@ -73,38 +73,156 @@
     });
   }
 
-  /* ---------------- theme: auto / light / dark ---------------- */
+  /* ---------------- theme: 自动 + 5 套配色 ---------------- */
   var SCHEME_KEY = 'StackColorScheme';
-  var schemeLabels = { auto: '自动', light: '浅色', dark: '深色' };
+  /* id / 名称 / 一句话说明 / 明暗骨架；数组顺序即面板顺序 */
+  var THEMES = [
+    { id: 'auto', name: '自动', desc: '跟随系统', scheme: 'auto' },
+    { id: 'light', name: '石墨', desc: '中性浅色', scheme: 'light' },
+    { id: 'dark', name: '石墨夜', desc: '中性深色', scheme: 'dark' },
+    { id: 'sepia', name: '暖纸', desc: '护眼米黄', scheme: 'light' },
+    { id: 'ink', name: '夜航', desc: '深蓝低光', scheme: 'dark' },
+    { id: 'moss', name: '苔原', desc: '低饱和绿', scheme: 'light' },
+    { id: 'haze', name: '雾蓝', desc: '冷调灰蓝', scheme: 'light' }
+  ];
+  /* 面板里的迷你色卡：背景 / 卡片 / 文字 / 强调 / 描边 */
+  var SWATCH = {
+    auto: { bg: 'linear-gradient(135deg,#f5f5fa 0 50%,#2f3238 50% 100%)', card: 'rgba(255,255,255,.82)', ink: '#4a5560', accent: '#7fa6cf', line: 'rgba(0,0,0,.14)' },
+    light: { bg: '#f5f5fa', card: '#ffffff', ink: '#3f4a55', accent: '#34495e', line: 'rgba(0,0,0,.10)' },
+    dark: { bg: '#303030', card: '#424242', ink: '#dfe3e6', accent: '#bdc3c7', line: 'rgba(255,255,255,.16)' },
+    sepia: { bg: '#f2ebdd', card: '#fffdf8', ink: '#5a4d3c', accent: '#8a5a2b', line: 'rgba(120,100,70,.22)' },
+    ink: { bg: '#1a1f27', card: '#232a34', ink: '#c9d4e2', accent: '#7fa6cf', line: 'rgba(180,200,225,.20)' },
+    moss: { bg: '#ecefe8', card: '#fbfcf8', ink: '#4a574a', accent: '#46705a', line: 'rgba(70,100,75,.22)' },
+    haze: { bg: '#e8eef5', card: '#ffffff', ink: '#41505f', accent: '#35608c', line: 'rgba(60,90,120,.20)' }
+  };
+  var THEME_MAP = {};
+  THEMES.forEach(function (t) { THEME_MAP[t.id] = t; });
+  var schemeLabels = {};
+  THEMES.forEach(function (t) { schemeLabels[t.id] = t.name; });
   /* file:// 下 localStorage 会抛错，用会话内变量保证连续切换仍然生效 */
   var currentScheme = null;
+
+  function normalizeTheme(v) {
+    v = String(v || '').toLowerCase();
+    return THEME_MAP[v] ? v : 'auto';
+  }
   function rawScheme() {
-    /* 支持 ?scheme=light|dark 直接预览指定配色，不写入 localStorage */
-    var forced = /[?&]scheme=(light|dark)/.exec(location.search);
-    if (forced) return forced[1];
+    /* 支持 ?theme=sepia（旧链接 ?scheme=dark 仍然有效），不写入 localStorage */
+    var forced = /[?&](?:scheme|theme)=([a-z]+)/.exec(location.search);
+    if (forced) return normalizeTheme(forced[1]);
     if (currentScheme) return currentScheme;
-    try { return localStorage.getItem(SCHEME_KEY) || localStorage.getItem('rb-theme') || 'auto'; }
+    try { return normalizeTheme(localStorage.getItem(SCHEME_KEY) || localStorage.getItem('rb-theme') || 'auto'); }
     catch (e) { return 'auto'; }
   }
-  function applyScheme(v) {
+  function resolveScheme(v) {
+    var t = THEME_MAP[v] || THEME_MAP.auto;
+    if (t.scheme !== 'auto') return t.scheme;
     var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-scheme', (v === 'dark' || (v === 'auto' && dark)) ? 'dark' : 'light');
+    return dark ? 'dark' : 'light';
+  }
+  function applyScheme(v) {
+    v = normalizeTheme(v);
+    var root = document.documentElement;
+    var scheme = resolveScheme(v);
+    root.setAttribute('data-scheme', scheme);
+    /* auto 时 data-theme 跟随系统落入 light / dark，具体主题则直接写 id */
+    root.setAttribute('data-theme', v === 'auto' ? scheme : v);
+    var name = schemeLabels[v] || '自动';
     var lab = $('#schemeLabel');
-    if (lab) lab.textContent = schemeLabels[v] || '自动';
+    if (lab) lab.textContent = name;
     var mt = $('#mTheme');
-    if (mt) mt.textContent = schemeLabels[v] || '自动';
+    if (mt) mt.textContent = name;
     var btn = $('#themeBtn');
-    if (btn) btn.title = '主题：' + (schemeLabels[v] || '自动') + '（点击切换）';
+    if (btn) btn.title = '配色主题：' + name + '（点击选择）';
     syncGiscusTheme();
   }
-  function cycleScheme() {
-    var order = ['auto', 'light', 'dark'];
-    var base = currentScheme || rawScheme();
-    var next = order[(order.indexOf(base) + 1) % 3];
-    currentScheme = next;
-    try { localStorage.setItem(SCHEME_KEY, next); } catch (e) {}
-    applyScheme(next);
+
+  /* ---------------- 选择面板 ---------------- */
+  var themePop = null;
+  function buildThemePanel() {
+    if (themePop) return themePop;
+    themePop = document.createElement('div');
+    themePop.className = 'theme-pop';
+    themePop.id = 'themePop';
+    themePop.setAttribute('role', 'dialog');
+    themePop.setAttribute('aria-label', '选择配色主题');
+    themePop.hidden = true;
+    themePop.innerHTML =
+      '<div class="theme-pop-head"><strong>配色主题</strong><span>' + (THEMES.length - 1) + ' 套</span></div>' +
+      '<div class="theme-grid" role="radiogroup" aria-label="配色主题">' +
+      THEMES.map(function (t) {
+        var s = SWATCH[t.id] || SWATCH.light;
+        return '<button class="theme-opt" type="button" role="radio" aria-checked="false" data-theme-id="' + t.id + '">' +
+          '<span class="theme-swatch" style="--sw-bg:' + s.bg + ';--sw-card:' + s.card +
+            ';--sw-ink:' + s.ink + ';--sw-accent:' + s.accent + ';--sw-line:' + s.line + '">' +
+            '<i class="sw-card"></i><i class="sw-ink"></i><i class="sw-dot"></i></span>' +
+          '<span class="theme-meta"><span class="theme-name">' + esc(t.name) + '</span>' +
+          '<span class="theme-desc">' + esc(t.desc) + '</span></span>' +
+          '</button>';
+      }).join('') +
+      '</div>' +
+      '<p class="theme-pop-foot">正文对比度均 ≥ 4.5:1，色相统一不刺眼。</p>';
+    document.body.appendChild(themePop);
+    themePop.addEventListener('click', function (e) {
+      var hit = e.target && e.target.closest ? e.target.closest('.theme-opt') : null;
+      if (hit) pickTheme(hit.getAttribute('data-theme-id'));
+    });
+    return themePop;
   }
+  function positionThemePanel() {
+    if (!themePop || themePop.hidden) return;
+    var anchor = $('#themeBtn');
+    if (!anchor) return;
+    var r = anchor.getBoundingClientRect();
+    var w = themePop.offsetWidth || 272;
+    var h = themePop.offsetHeight || 300;
+    var left = r.left;
+    if (left + w > window.innerWidth - 12) left = Math.max(12, window.innerWidth - w - 12);
+    var top = r.bottom + 8;
+    if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 8);
+    themePop.style.left = Math.round(left) + 'px';
+    themePop.style.top = Math.round(top) + 'px';
+  }
+  function syncThemePanel() {
+    if (!themePop) return;
+    var cur = rawScheme();
+    $$('.theme-opt', themePop).forEach(function (b) {
+      b.setAttribute('aria-checked', b.getAttribute('data-theme-id') === cur ? 'true' : 'false');
+    });
+  }
+  function openThemePanel() {
+    buildThemePanel();
+    syncThemePanel();
+    themePop.hidden = false;
+    positionThemePanel();
+  }
+  function closeThemePanel() {
+    if (themePop && !themePop.hidden) themePop.hidden = true;
+  }
+  function toggleThemePanel() {
+    if (themePop && !themePop.hidden) closeThemePanel();
+    else openThemePanel();
+  }
+  function pickTheme(id) {
+    var v = normalizeTheme(id);
+    currentScheme = v;
+    try { localStorage.setItem(SCHEME_KEY, v); } catch (e) {}
+    applyScheme(v);
+    syncThemePanel();
+    closeThemePanel();
+  }
+  document.addEventListener('click', function (e) {
+    if (!themePop || themePop.hidden) return;
+    if (themePop.contains(e.target)) return;
+    if (e.target && e.target.closest && e.target.closest('#themeBtn')) return;
+    closeThemePanel();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeThemePanel();
+  });
+  window.addEventListener('resize', positionThemePanel);
+  window.addEventListener('scroll', positionThemePanel, { passive: true });
+
   applyScheme(rawScheme());
   if (window.matchMedia) {
     var mq = matchMedia('(prefers-color-scheme: dark)');
@@ -154,7 +272,14 @@
     renderIcons();
 
     var toggle = $('#themeBtn');
-    if (toggle) toggle.addEventListener('click', cycleScheme);
+    if (toggle && !toggle.__themeBound) {
+      toggle.__themeBound = true;
+      toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleThemePanel();
+      });
+    }
     var ham = $('#toggleMenu');
     if (ham) ham.addEventListener('click', function () { document.body.classList.toggle('menu-open'); });
     $$('.menu a').forEach(function (a) {
@@ -551,6 +676,8 @@
 
   /* ---------------- 评论：Giscus（GitHub Discussions，无后端） ---------------- */
   function currentSchemeName() {
+    var theme = document.documentElement.getAttribute('data-theme');
+    if (theme === 'ink') return 'dark_dimmed';
     return document.documentElement.getAttribute('data-scheme') === 'dark' ? 'dark' : 'light';
   }
   function renderComments() {

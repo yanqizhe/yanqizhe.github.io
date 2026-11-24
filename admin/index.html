@@ -9,8 +9,12 @@
     (function () {
       try {
         var s = localStorage.getItem('StackColorScheme') || 'auto';
-        var dark = s === 'dark' || (s === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-        document.documentElement.setAttribute('data-scheme', dark ? 'dark' : 'light');
+        var KNOWN = { light: 'light', dark: 'dark', sepia: 'light', moss: 'light', haze: 'light', ink: 'dark' };
+        var theme = KNOWN[s] ? s : 'auto';
+        var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var scheme = theme === 'auto' ? (dark ? 'dark' : 'light') : KNOWN[theme];
+        document.documentElement.setAttribute('data-scheme', scheme);
+        document.documentElement.setAttribute('data-theme', theme === 'auto' ? scheme : theme);
       } catch (e) {}
     })();
   </script>

@@ -138,14 +138,31 @@
   }
 
   /* ---------------- 主题 ---------------- */
+  var ADMIN_THEMES = [
+    { id: 'auto', name: '自动', scheme: 'auto' },
+    { id: 'light', name: '石墨', scheme: 'light' },
+    { id: 'dark', name: '石墨夜', scheme: 'dark' },
+    { id: 'sepia', name: '暖纸', scheme: 'light' },
+    { id: 'ink', name: '夜航', scheme: 'dark' },
+    { id: 'moss', name: '苔原', scheme: 'light' },
+    { id: 'haze', name: '雾蓝', scheme: 'light' }
+  ];
+  var ADMIN_THEME_MAP = {};
+  ADMIN_THEMES.forEach(function (t) { ADMIN_THEME_MAP[t.id] = t; });
+
   function applyTheme() {
     var s = 'auto';
     try { s = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) {}
-    var dark = s === 'dark' || (s === 'auto' && window.matchMedia &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.documentElement.setAttribute('data-scheme', dark ? 'dark' : 'light');
-    var labels = { auto: '自动', light: '浅色', dark: '深色' };
-    $('#themeBtn').textContent = '主题：' + (labels[s] || '自动');
+    if (!ADMIN_THEME_MAP[s]) s = 'auto';
+    var t = ADMIN_THEME_MAP[s];
+    var scheme = t.scheme;
+    if (scheme === 'auto') {
+      scheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var root = document.documentElement;
+    root.setAttribute('data-scheme', scheme);
+    root.setAttribute('data-theme', s === 'auto' ? scheme : s);
+    $('#themeBtn').textContent = '主题：' + t.name;
   }
 
   /* ---------------- GitHub API ---------------- */
@@ -384,7 +401,7 @@
       title: '阅读与排版',
       items: [
         { fixed: true, name: '倒排索引搜索 + Ctrl K', desc: '运行时建索引，中文按 bigram 切分；Ctrl K 随时唤起。索引在首屏渲染后构建，不阻塞打开速度。' },
-        { fixed: true, name: '三态配色与正文字号', desc: '自动 / 浅色 / 深色跟随系统；文章页可调小中大字号，选择记忆在本机。' },
+        { fixed: true, name: '七套配色与正文字号', desc: '自动跟随系统，另有石墨 / 石墨夜 / 暖纸 / 夜航 / 苔原 / 雾蓝 六套色系；色相统一、正文对比度均 ≥ 4.5:1，左栏「配色主题」点开即可切换，选择记忆在本机。' },
         { fixed: true, name: '目录跟随与段落锚点', desc: '右栏目录随滚动高亮；标题旁的 # 是锚点，可复制某一段的直达链接。' },
         { fixed: true, name: '代码高亮与一键复制', desc: '自写词法着色，零第三方库；代码块右上角可直接复制全文。' },
         { fixed: true, name: '图片灯箱与懒加载', desc: '正文图片点击放大；滚动到附近才加载，省流量。' },
@@ -1429,7 +1446,9 @@
     $('#themeBtn').addEventListener('click', function () {
       var cur = 'auto';
       try { cur = localStorage.getItem(THEME_KEY) || 'auto'; } catch (e) {}
-      var next = { auto: 'light', light: 'dark', dark: 'auto' }[cur] || 'auto';
+      var ids = ADMIN_THEMES.map(function (t) { return t.id; });
+      var i = ids.indexOf(cur);
+      var next = ids[(i + 1) % ids.length];
       try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
       applyTheme();
     });

@@ -30,11 +30,14 @@
   (function () {
     var k = 'StackColorScheme', v = 'auto';
     try { v = localStorage.getItem(k) || localStorage.getItem('rb-theme') || 'auto'; } catch (e) {}
-    var forced = /[?&]scheme=(light|dark)/.exec(location.search);
+    var forced = /[?&](?:scheme|theme)=([a-z]+)/.exec(location.search);
     if (forced) v = forced[1];
+    var KNOWN = { light: 'light', dark: 'dark', sepia: 'light', moss: 'light', haze: 'light', ink: 'dark' };
+    var theme = KNOWN[v] ? v : 'auto';
     var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.setAttribute('data-scheme',
-      (v === 'dark' || (v === 'auto' && dark)) ? 'dark' : 'light');
+    var scheme = theme === 'auto' ? (dark ? 'dark' : 'light') : KNOWN[theme];
+    document.documentElement.setAttribute('data-scheme', scheme);
+    document.documentElement.setAttribute('data-theme', theme === 'auto' ? scheme : theme);
   })();
 </script>
 </head>
@@ -75,9 +78,9 @@
     <li class="menu-bottom-section"><ol class="menu">
       <li><button class="quick-search-trigger" type="button" data-action="quick-search" aria-label="快捷搜索">
         <span data-icon="search"></span><span>快捷搜索</span><kbd>Ctrl K</kbd></button></li>
-      <li><button class="dark-toggle" id="themeBtn" type="button" aria-label="切换配色方案">
+      <li><button class="dark-toggle" id="themeBtn" type="button" aria-label="选择配色主题">
         <span data-icon="sun" class="icon-sun"></span><span data-icon="moon" class="icon-moon"></span>
-        <span>配色方案</span><span class="scheme-label" id="schemeLabel">自动</span>
+        <span>配色主题</span><span class="scheme-label" id="schemeLabel">自动</span>
       </button></li>
     </ol></li>
   </ol>
