@@ -52,7 +52,14 @@
     bookmark: '<path d="M6 4h12v16l-6 -4l-6 4z"/>',
     series: '<path d="M4 6h16M4 12h16M4 18h10"/>',
     minus: '<path d="M5 12h14"/>',
-    plus: '<path d="M12 5v14M5 12h14"/>'
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    speaker: '<path d="M15 8a5 5 0 0 1 0 8"/><path d="M18 5a10 10 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l5 -4v14l-5 -4z"/>',
+    pause: '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    heart: '<path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.566z"/>',
+    star: '<path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z"/>',
+    chart: '<path d="M3 3v18h18"/><path d="M7 15l4 -4l3 3l4 -6"/>',
+    bookmarkAdd: '<path d="M9 4h6a2 2 0 0 1 2 2v16l-7 -4l-7 4v-16a2 2 0 0 1 2 -2z"/><path d="M12 8v6M9 11h6"/>'
   };
   function icon(name, extra) {
     return '<svg class="icon ' + (extra || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
@@ -259,6 +266,8 @@
     }).join('');
     window.__TAGS = tags;
     window.__TAGCOUNT = tagCount;
+    renderFavWidget();
+    renderStatWidget();
   }
 
   /* ---------------- search form (right sidebar) ---------------- */
@@ -307,6 +316,8 @@
 
     list.innerHTML = slice.length ? slice.map(cardHtml).join('') : emptyHtml('没有匹配的文章，换个关键词试试。');
     renderPager(pages, cat);
+    if (!currentQuery && !cat) renderContinueReading();
+    else { var cc = $('#continueReading'); if (cc) cc.remove(); }
     if (window.__cvRefresh) window.__cvRefresh();
   }
   function renderPager(pages, cat) {
@@ -364,6 +375,7 @@
       return;
     }
     var p = POSTS[idx];
+    CURRENT_SLUG = p.slug;
     document.title = p.title + ' · ' + SITE.name + ' · Sample';
     $('#postTitle') && ($('#postTitle').textContent = p.title);
 
@@ -409,6 +421,7 @@
       '<section class="article-copyright inline-meta">' + icon('copyright', 'icon-sm') + '<span>' + esc(SITE.license) + '</span></section>' +
       '<section class="article-lastmod inline-meta">' + icon('edit', 'icon-sm') + '<span>最后更新于 ' + p.lastmod + '（样品值）</span></section>' +
       '<section class="article-source inline-meta">' + icon('file', 'icon-sm') + '<span>正式站由 Hugo 生成 Markdown 源文件；本样品由数据层渲染。</span></section>' +
+      '<div class="article-actions" id="articleActions"></div>' +
       '</footer></article>';
     $('#postContainer') && ($('#postContainer').innerHTML = html);
     renderIcons($('#postContainer'));
@@ -434,7 +447,10 @@
         (next ? '<a class="next" href="' + postUrl(next) + '"><span>下一篇 →</span><strong>' + esc(next.title) + '</strong></a>' : '<span></span>');
     }
     renderShare(p);
+    renderArticleActions(p);
+    injectSpeakButton();
     bindTocHighlight();
+    maybeResume(p);
   }
   function bindTocHighlight() {
     var links = $$('#widgetToc a, .toc-nav a');
@@ -472,6 +488,249 @@
     window.addEventListener('resize', update, { passive: true });
     update();
   }
+
+  /* ---------------- 本地互动：点赞 / 收藏 / 阅读进度 / 朗读 ----------------
+     全部只用 localStorage 与浏览器原生 API，不发起任何外部请求。 */
+  var LS = {
+    get: function (k, d) {
+      try { var v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; }
+    },
+    set: function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  var FAV_KEY = 'rb-favorites', LIKE_KEY = 'rb-likes', PROG_KEY = 'rb-progress';
+  var CURRENT_SLUG = '';
+
+  function findPost(slug) {
+    for (var i = 0; i < POSTS.length; i++) if (POSTS[i].slug === slug) return POSTS[i];
+    return null;
+  }
+  function favList() {
+    var a = LS.get(FAV_KEY, []);
+    return Array.isArray(a) ? a.filter(function (s) { return typeof s === 'string'; }) : [];
+  }
+  function toggleFav(slug) {
+    var a = favList(), i = a.indexOf(slug), added = i < 0;
+    if (added) a.unshift(slug); else a.splice(i, 1);
+    LS.set(FAV_KEY, a.slice(0, 60));
+    return added;
+  }
+  function likeMap() {
+    var o = LS.get(LIKE_KEY, {});
+    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+  }
+
+  /* 文章底部：点赞 + 收藏 */
+  function renderArticleActions(p) {
+    var box = $('#articleActions');
+    if (!box || !p) return;
+    var liked = !!likeMap()[p.slug];
+    box.innerHTML =
+      '<button class="act-btn' + (liked ? ' is-on' : '') + '" id="likeBtn" type="button" aria-pressed="' + liked + '">' +
+      icon('heart', 'icon-sm') + '<span>' + (liked ? '已顶过' : '顶一下') + '</span></button>' +
+      '<button class="act-btn" id="favBtn" type="button" aria-pressed="false">' +
+      icon('star', 'icon-sm') + '<span>收藏</span></button>' +
+      '<span class="act-hint">点赞与收藏只保存在这台设备的浏览器里</span>';
+    renderIcons(box);
+
+    var likeBtn = $('#likeBtn', box);
+    if (likeBtn) likeBtn.addEventListener('click', function () {
+      var m = likeMap();
+      if (m[p.slug]) { delete m[p.slug]; toast('已取消'); }
+      else { m[p.slug] = Date.now(); toast('已记录'); }
+      LS.set(LIKE_KEY, m);
+      renderArticleActions(p);
+    });
+
+    var favBtn = $('#favBtn', box);
+    if (favBtn) {
+      var sync = function () {
+        var on = favList().indexOf(p.slug) >= 0;
+        favBtn.classList.toggle('is-on', on);
+        favBtn.setAttribute('aria-pressed', String(on));
+        var t = $('span', favBtn);
+        if (t) t.textContent = on ? '已收藏' : '收藏';
+      };
+      sync();
+      favBtn.addEventListener('click', function () {
+        var added = toggleFav(p.slug);
+        sync();
+        renderFavWidget();
+        toast(added ? '已收藏，右栏「我的收藏」可见' : '已从收藏中移除');
+      });
+    }
+  }
+
+  /* 右栏：我的收藏（有记录才出现） */
+  function renderFavWidget() {
+    var bar = $('.right-sidebar');
+    if (!bar) return;
+    var box = $('#widgetFav');
+    var favs = favList().map(findPost).filter(Boolean);
+    if (!favs.length) { if (box) box.remove(); return; }
+    if (!box) {
+      box = document.createElement('section');
+      box.id = 'widgetFav';
+      box.className = 'widget';
+      bar.appendChild(box);
+    }
+    box.innerHTML = '<div class="widget-icon">' + icon('star') + '</div>' +
+      '<h2 class="widget-title section-title">我的收藏<small class="widget-count">' + favs.length + '</small></h2>' +
+      '<div class="fav-list">' + favs.slice(0, 8).map(function (p) {
+        return '<a href="' + postUrl(p) + '"><span class="fav-dot cat-' + p.category + '"></span>' +
+          '<span class="fav-title">' + esc(p.title) + '</span></a>';
+      }).join('') + '</div>' + (favs.length > 8 ? '<a class="fav-more" href="index.html">还有 ' + (favs.length - 8) + ' 篇…</a>' : '');
+  }
+
+  /* 右栏：站点统计 */
+  function renderStatWidget() {
+    var bar = $('.right-sidebar');
+    if (!bar) return;
+    var box = $('#widgetStat');
+    if (!box) {
+      box = document.createElement('section');
+      box.id = 'widgetStat';
+      box.className = 'widget';
+      bar.appendChild(box);
+    }
+    var words = POSTS.reduce(function (a, p) { return a + (p.words || 0); }, 0);
+    var tags = Object.keys(window.__TAGCOUNT || {}).length;
+    var last = POSTS.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; })[0];
+    var avg = POSTS.length ? Math.round(words / POSTS.length) : 0;
+    box.innerHTML = '<div class="widget-icon">' + icon('chart') + '</div>' +
+      '<h2 class="widget-title section-title">站点统计</h2>' +
+      '<div class="stat-grid">' +
+      '<div class="stat-cell"><strong>' + POSTS.length + '</strong><span>文章</span></div>' +
+      '<div class="stat-cell"><strong>' + tags + '</strong><span>标签</span></div>' +
+      '<div class="stat-cell"><strong>' + (words >= 10000 ? (words / 10000).toFixed(1) + '万' : words) + '</strong><span>总字数</span></div>' +
+      '<div class="stat-cell"><strong>' + avg + '</strong><span>篇均</span></div>' +
+      '</div><p class="stat-foot">最后更新 ' + (last ? last.date : '—') + '</p>';
+  }
+
+  /* 阅读进度记忆 */
+  function progMap() {
+    var o = LS.get(PROG_KEY, {});
+    return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+  }
+  function recordProgress(slug, ratio) {
+    if (!slug) return;
+    var m = progMap();
+    if (ratio >= 0.97) delete m[slug];
+    else if (ratio > 0.04) m[slug] = { r: Math.round(ratio * 100) / 100, t: Date.now() };
+    else return;
+    var keys = Object.keys(m);
+    if (keys.length > 40) {
+      keys.sort(function (a, b) { return (m[a] || {}).t - (m[b] || {}).t; });
+      keys.slice(0, keys.length - 40).forEach(function (k) { delete m[k]; });
+    }
+    LS.set(PROG_KEY, m);
+  }
+  function latestProgress() {
+    var m = progMap(), best = null;
+    Object.keys(m).forEach(function (slug) {
+      var rec = m[slug] || {}, p = findPost(slug);
+      if (!p) return;
+      var r = Number(rec.r) || 0;
+      if (r <= 0.04 || r >= 0.97) return;
+      if (!best || (rec.t || 0) > best.t) best = { p: p, r: r, t: rec.t || 0 };
+    });
+    return best;
+  }
+
+  /* 首页：继续阅读提示条 */
+  function renderContinueReading() {
+    var best = latestProgress();
+    var card = $('#continueReading');
+    if (!best) { if (card) card.remove(); return; }
+    if (!card) {
+      var anchor = $('#searchMeta') || $('#postlist');
+      if (!anchor || !anchor.parentNode) return;
+      card = document.createElement('div');
+      card.id = 'continueReading';
+      card.className = 'continue-card';
+      anchor.parentNode.insertBefore(card, anchor.nextSibling);
+    }
+    var pct = Math.max(5, Math.round(best.r * 100));
+    card.innerHTML = '<a class="continue-link" href="' + postUrl(best.p) + '&resume=1">' +
+      '<span class="continue-ico">' + icon('bookmark') + '</span>' +
+      '<span class="continue-body"><small>继续阅读</small><strong>' + esc(best.p.title) + '</strong>' +
+      '<span class="continue-bar"><i style="width:' + pct + '%"></i></span></span>' +
+      '<span class="continue-pct">' + pct + '%</span></a>' +
+      '<button class="continue-close" id="continueClose" type="button" aria-label="清除继续阅读记录">×</button>';
+    var close = $('#continueClose', card);
+    if (close) close.addEventListener('click', function () {
+      var m = progMap();
+      delete m[best.p.slug];
+      LS.set(PROG_KEY, m);
+      card.remove();
+    });
+  }
+
+  /* 文章页：从「继续阅读」进来时跳到上次位置 */
+  function maybeResume(p) {
+    if (params.get('resume') !== '1' || !p) return;
+    var rec = progMap()[p.slug];
+    if (!rec || !(rec.r > 0.04)) return;
+    setTimeout(function () {
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+      if (h > 40) window.scrollTo({ top: Math.round(h * rec.r), behavior: 'smooth' });
+      toast('已跳到上次读到的地方');
+    }, 320);
+  }
+
+  /* 文章朗读（Web Speech API，纯本地） */
+  var speakBtnReady = false;
+  function setSpeakUI(on, label) {
+    var btn = $('#speakBtn');
+    if (!btn) return;
+    btn.classList.toggle('is-on', !!on);
+    var s = $('span', btn);
+    if (s) s.textContent = label;
+  }
+  function articlePlainText() {
+    var body = $('.article-content');
+    if (!body) return '';
+    return (body.innerText || body.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+  function toggleSpeak() {
+    var syn = window.speechSynthesis;
+    if (!syn) return;
+    if (syn.speaking || syn.paused) {
+      syn.cancel();
+      setSpeakUI(false, '朗读');
+      return;
+    }
+    var text = articlePlainText();
+    if (!text) { toast('没有可朗读的正文'); return; }
+    syn.cancel();
+    var u = new SpeechSynthesisUtterance(text.slice(0, 9000));
+    u.lang = 'zh-CN';
+    u.rate = 1;
+    u.onend = function () { setSpeakUI(false, '朗读'); };
+    u.onerror = function () { setSpeakUI(false, '朗读'); };
+    syn.speak(u);
+    setSpeakUI(true, '停止');
+  }
+  function injectSpeakButton() {
+    if (speakBtnReady || !window.speechSynthesis) return;
+    var tools = $('#fontSizeControl');
+    if (!tools || !$('.article-content')) return;
+    speakBtnReady = true;
+    var sep = document.createElement('span');
+    sep.className = 'reading-tools-sep';
+    sep.setAttribute('aria-hidden', 'true');
+    var btn = document.createElement('button');
+    btn.id = 'speakBtn';
+    btn.type = 'button';
+    btn.className = 'speak-btn';
+    btn.title = '用系统语音朗读正文';
+    btn.innerHTML = icon('speaker', 'icon-sm') + '<span>朗读</span>';
+    tools.appendChild(sep);
+    tools.appendChild(btn);
+    btn.addEventListener('click', toggleSpeak);
+  }
+  window.addEventListener('beforeunload', function () {
+    try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
+  });
 
   /* ---------------- archives ---------------- */
   function renderArchives() {
@@ -731,6 +990,8 @@
     $$('.article-content img, .prose img', root).forEach(function (img) {
       img.classList.add('zoomable');
       img.setAttribute('tabindex', '0');
+      if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy');
+      img.setAttribute('decoding', 'async');
       var open = function () {
         var box = $('#lightbox'), target = $('#lightboxImg');
         if (!box || !target) return;
@@ -758,18 +1019,28 @@
   function bindReadingProgress() {
     var bar = $('#readingProgress');
     if (!bar) return;
-    var ticking = false;
+    var ticking = false, saveTimer = null, lastP = 0;
     function update() {
       var h = document.documentElement.scrollHeight - window.innerHeight;
       var p = h > 0 ? Math.min(1, Math.max(0, window.scrollY / h)) : 0;
+      lastP = p;
       bar.style.transform = 'scaleX(' + p.toFixed(4) + ')';
       bar.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+      if (PAGE === 'post' && CURRENT_SLUG) {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () { recordProgress(CURRENT_SLUG, lastP); }, 900);
+      }
       ticking = false;
+    }
+    function flush() {
+      if (PAGE === 'post' && CURRENT_SLUG) recordProgress(CURRENT_SLUG, lastP);
     }
     window.addEventListener('scroll', function () {
       if (!ticking) { ticking = true; requestAnimationFrame(update); }
     }, { passive: true });
     window.addEventListener('resize', update, { passive: true });
+    document.addEventListener('visibilitychange', function () { if (document.hidden) flush(); });
+    window.addEventListener('pagehide', flush);
     update();
   }
 
