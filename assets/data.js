@@ -67,6 +67,28 @@
   /* === EMBEDDED_POSTS_BEGIN === */
   var POSTS = [
   {
+    "slug": "post-mwuuiha3",
+    "title": "七个葫芦娃重磅上演",
+    "subtitle": "汪凌翔神了",
+    "category": "Original",
+    "date": "2026-11-24",
+    "minutes": 6,
+    "tags": [],
+    "cover": "Original",
+    "draft": false,
+    "publishAt": "",
+    "footnotes": [],
+    "sections": [
+      {
+        "h": "小标题",
+        "p": [
+          "在这里写正文。"
+        ]
+      }
+    ],
+    "lastmod": "2026-11-24"
+  },
+  {
     "slug": "post-mwpyx3sg",
     "title": "郭逸文好帅",
     "subtitle": "火箭发射",
